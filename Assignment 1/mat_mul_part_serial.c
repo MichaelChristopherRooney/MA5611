@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 void print_matrix(double **mat, int m, int n) {
@@ -52,22 +53,56 @@ void mat_mul_single_part(double **a, double **b, double **c, int part_size, int 
 	}
 }
 
+void add_mat(double **dest, double **source, int num_rows, int num_cols) {
+	int i, j;
+	for (i = 0; i < num_rows; i++) {
+		for (j = 0; j < num_cols; j++) {
+			dest[i][j] += source[i][j];
+		}
+	}
+}
+
+void copy_part_to_result(double **part, double **result, int num_rows, int num_cols, int row_offset, int col_offset) {
+	int i, j;
+	for (i = 0; i < num_rows; i++) {
+		for (j = 0; j < num_cols; j++) {
+			result[i + row_offset][j + col_offset] = part[i][j];
+		}
+	}
+}
+
 void mat_mul_part(double **a, double **b, double **c, int num_rows, int num_cols) {
 	const int part_size = 2;
-	int i;
+	int i, j, k;
 	double **temp1 = create_empty_matrix(part_size, part_size);
 	double **temp2 = create_empty_matrix(part_size, part_size);
 	for (i = 0; i < part_size; i++) {
-		int j;
 		for (j = 0; j < part_size; j++) {
-			int k;
-			// TODO: sum the related parts - ensure old memory is cleared
+			// Ensure the memory does not contain old values.
+			memset(*temp2, 0, part_size * part_size * sizeof(double));
 			for (k = 0; k < part_size; k++) {
 				mat_mul_single_part(a, b, temp1, part_size, i*part_size, k*part_size, k*part_size, j*part_size);
-				print_matrix(temp1, part_size, part_size);
-
+				add_mat(temp2, temp1, part_size, part_size);
 			}
+			//print_matrix(temp2, part_size, part_size);
+			// Write the partial result to the result matrix.
+			copy_part_to_result(temp2, c, part_size, part_size, i * part_size, j * part_size);
+		}
+	}
+}
 
+// matrix a is l x m
+// matrix b is m x n
+// matrix c is l x n
+void mat_mul(double **a, double **b, double **c, int l, int m, int n) {
+	int i, j, k;
+	for (i = 0; i < l; i++) {
+		for (j = 0; j < n; j++) {
+			double sum = 0.0;
+			for (k = 0; k < m; k++) {
+				sum += a[i][k] * b[k][j];
+			}
+			c[i][j] = sum;
 		}
 	}
 }
@@ -76,13 +111,17 @@ int main(int argc, char *argv[]) {
 	int n = 4;
 	double **a = create_matrix_with_random_values(n, n);
 	double **b = create_matrix_with_random_values(n, n);
-	double **c = create_empty_matrix(n, n);
-	mat_mul_part(a, b, c, n, n);
+	double **part = create_empty_matrix(n, n);
+	double **control = create_empty_matrix(n, n);
+	mat_mul_part(a, b, part, n, n);
+	mat_mul(a, b, control, n, n, n); // control for comparison
 	//printf("a\n");
 	//print_matrix(a, n, n);
 	//printf("b\n");
 	//print_matrix(b, n, n);
-	//printf("c\n");
-	//print_matrix(c, n, n);
+	printf("Control matrix:\n");
+	print_matrix(control, n, n);
+	printf("Using part:\n");
+	print_matrix(part, n, n);
 	return 0;
 }
