@@ -51,34 +51,53 @@ void extract_part(double **source, double **dest, int start_row, int start_col){
 	}	
 }
 
-void send_initial_part(int dest_rank){
-
+void send_initial_part(double **a, double **b, double **a_temp, double **b_temp, int i, int j){
+	int dest = j + (i*2);
+	int shift = (i + j) % ((int) sqrt(NUM_PARTS));
+	printf("P[%d][%d] (rank %d) should get:\n", i, j, dest);
+	printf("A[%d][%d] :\n", i, shift);
+	extract_part(a, a_temp, i*PART_SIZE, shift*PART_SIZE);
+	print_matrix(a_temp, PART_SIZE, PART_SIZE);
+	printf("B[%d][%d]:\n", shift, j);
+	extract_part(b, b_temp, shift*PART_SIZE, j*PART_SIZE);
+	print_matrix(b_temp, PART_SIZE, PART_SIZE);
+	MPI_Send(*a_temp, PART_SIZE * PART_SIZE, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
+	MPI_Send(*b_temp, PART_SIZE * PART_SIZE, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
+	sleep(1);
 }
 
 // Sends the initial parts to the corresponding destination node.
 void send_all_initial_parts(double **a, double **b){
-	double **temp = create_empty_matrix(PART_SIZE, PART_SIZE);
+	double **a_temp = create_empty_matrix(PART_SIZE, PART_SIZE);
+	double **b_temp = create_empty_matrix(PART_SIZE, PART_SIZE);
 	int i, j;
 	for(i = 0; i < PART_SIZE; i++){
 		for(j = 0; j < PART_SIZE; j++){
 			if(i == 0 && j == 0){
 				continue;
 			}
-			int dest = j + (i*2);
-			int shift = (i + j) % ((int) sqrt(NUM_PARTS));
-			printf("P[%d][%d] (rank %d) should get:\n", i, j, dest);
-			printf("A[%d][%d] :\n", i, shift);
-			extract_part(a, temp, i*PART_SIZE, shift*PART_SIZE);
-			print_matrix(temp, PART_SIZE, PART_SIZE);
-			printf("B[%d][%d]:\n", shift, j);
-			extract_part(b, temp, shift*PART_SIZE, j*PART_SIZE);
-			print_matrix(temp, PART_SIZE, PART_SIZE);
+			send_initial_part(a, b, a_temp, b_temp, i, j);
 		}
 	}
 }
 
-void receive_initial_parts(double **a_part, double **b_part){
-
+void receive_initial_parts(int rank){
+	MPI_Status s;
+	double **a_part = malloc(sizeof(double *) * PART_SIZE);
+	double **b_part = malloc(sizeof(double *) * PART_SIZE);
+	double *a_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	double *b_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	MPI_Recv(a_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+	MPI_Recv(b_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+	int i;
+	for(i = 0; i < PART_SIZE; i++){
+		a_part[i] = &(a_buf[i*PART_SIZE]);
+		b_part[i] = &(b_buf[i*PART_SIZE]);
+	}
+	printf("P %d got matrix A:\n", rank);
+	print_matrix(a_part, PART_SIZE, PART_SIZE);
+	printf("B:\n");
+	print_matrix(b_part, PART_SIZE, PART_SIZE);
 }
 
 int main(int argc, char *argv[]){
@@ -97,7 +116,7 @@ int main(int argc, char *argv[]){
 		print_matrix(b, MAT_SIZE, MAT_SIZE);
 		send_all_initial_parts(a, b);
 	} else {
-		receive_initial_parts(a_part, b_part);
+		receive_initial_parts(rank);
 	}
 	MPI_Finalize();
 	return 0;
