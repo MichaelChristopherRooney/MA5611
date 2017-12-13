@@ -175,10 +175,10 @@ void receive_initial_parts(){
 
 void print_initial_and_control(double **a, double **b){
 	double **control = create_empty_matrix(MAT_SIZE, MAT_SIZE);
-	printf("A:\n");
-	print_matrix(a, MAT_SIZE, MAT_SIZE);
-	printf("B:\n");
-	print_matrix(b, MAT_SIZE, MAT_SIZE);
+	//printf("A:\n");
+	//print_matrix(a, MAT_SIZE, MAT_SIZE);
+	//printf("B:\n");
+	//print_matrix(b, MAT_SIZE, MAT_SIZE);
 	mat_mul_serial(a, b, control, MAT_SIZE, MAT_SIZE, MAT_SIZE);
 	printf("Control:\n");
 	print_matrix(control, MAT_SIZE, MAT_SIZE);
@@ -244,62 +244,21 @@ int main(int argc, char *argv[]){
 	} else {
 		receive_initial_parts();
 	}
+	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 	MPI_Request request;
 	MPI_Status s;
-	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
-	//printf("P(%d) sending A to %d and B to %d\n", my_data->rank, my_data->a_dest, my_data->b_dest);
-	MPI_Barrier(MPI_COMM_WORLD);
-	// Async send A to dest
-	if(my_data->a_dest == 6){
-		printf("%d sending A to 1\n", my_data->rank);
-		int i;
-		for(i = 0; i < PART_SIZE * PART_SIZE; i++){
-			printf("%f ", my_data->a_part_buf[i]);
-		}
-		printf("\n");
+	int i;
+	for(i = 1; i < NUM_DIVISIONS; i++){
+		MPI_Isend(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_dest, 0, MPI_COMM_WORLD, &request);
+		MPI_Recv(my_data->a_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Isend(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_dest, 0, MPI_COMM_WORLD, &request);
+		MPI_Recv(my_data->b_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+		memcpy(my_data->a_part_buf, my_data->a_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
+		memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
+		mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 	}
-	MPI_Isend(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_dest, 0, MPI_COMM_WORLD, &request);
-	// Sync receive A from source
-	MPI_Recv(my_data->a_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
-	MPI_Barrier(MPI_COMM_WORLD);
-	// Async send B to dest
-	if(my_data->b_dest == 6){
-		printf("%d sending B to 1\n", my_data->rank);
-		int i;
-		for(i = 0; i < PART_SIZE * PART_SIZE; i++){
-			printf("%f ", my_data->b_part_buf[i]);
-		}
-		printf("\n");
-	}
-	MPI_Isend(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_dest, 0, MPI_COMM_WORLD, &request);
-	// Sync receive B from source
-	MPI_Recv(my_data->b_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
-	memcpy(my_data->a_part_buf, my_data->a_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
-	memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
-	set_matrix_from_buf(my_data->a_part, my_data->a_part_buf, PART_SIZE, PART_SIZE);
-	set_matrix_from_buf(my_data->b_part, my_data->b_part_buf, PART_SIZE, PART_SIZE);
-	/**/
 	sleep(rand() % (10 + 1 - 2) + 2);
-	if(my_data->rank == 6){
-		printf("P(%d) received:\n", my_data->rank);
-		printf("A:\n");
-		print_matrix(my_data->a_part, PART_SIZE, PART_SIZE);
-		int i;
-		for(i = 0; i < PART_SIZE * PART_SIZE; i++){
-			printf("%f ", my_data->a_recv_buf[i]);
-		}
-		printf("\n");
-		printf("B:\n");
-		print_matrix(my_data->b_part, PART_SIZE, PART_SIZE);
-		for(i = 0; i < PART_SIZE * PART_SIZE; i++){
-			printf("%f ", my_data->b_recv_buf[i]);
-		}
-		printf("\n");
-	}
-
-	
-	sleep(rand() % (10 + 1 - 2) + 2);
-	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 	printf("Final C for %d:\n", my_data->rank);
 	print_matrix(my_data->c_part, PART_SIZE, PART_SIZE);
 	
