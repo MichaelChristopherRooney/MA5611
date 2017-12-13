@@ -4,8 +4,8 @@
 #include <math.h>
 #include <mpi.h>
 
-#define MAT_SIZE 4
-#define NUM_DIVISIONS 2
+#define MAT_SIZE 9
+#define NUM_DIVISIONS 3
 static const int NUM_PARTS = NUM_DIVISIONS * NUM_DIVISIONS;
 static const int PART_SIZE = MAT_SIZE / NUM_DIVISIONS;
 
@@ -25,6 +25,8 @@ struct p_data {
 	// The processes that will received this process's A and B parts
 	int a_dest;
 	int b_dest;
+	int a_source;
+	int b_source;
 };
 
 struct p_data data;
@@ -60,9 +62,27 @@ void mat_mul_part(double **a, double **b, double **c, int l, int m, int n) {
 		for (j = 0; j < n; j++) {
 			double sum = 0.0;
 			for (k = 0; k < m; k++) {
-				sum += a[i][k] * b[k][j];
+				sum += (a[i][k] * b[k][j]);
 			}
-			c[i][j] += sum; 
+			if(sum < -20.0){
+				//printf("\n===================n");
+				//printf("Sum is deformed\n");
+				//printf("\n===================n");
+			}
+			if(c[i][j] < -20.0){
+				//printf("\n===================n");
+				//printf("Total pre-add is deformed\n");
+				//printf("\n===================n");
+			}
+			c[i][j] += sum;
+			if(c[i][j] < -20.0){
+				//printf("\n===================n");
+				//printf("Total after add  is deformed\n");
+				//printf("\n===================n");
+			}
+
+
+
 		}
 	}
 }
@@ -88,13 +108,17 @@ double **create_empty_matrix(int m, int n) {
 	return result;
 }
 
+// TODO: make this random again
 double **create_matrix_with_random_values(int m, int n) {
 	double **mat = create_empty_matrix(m, n);
+	int count = 0;
 	int i, j;
 	for (i = 0; i < m; i++) {
 		for (j = 0; j < n; j++) {
 			mat[i][j] = rand() % 5; // numbers in range 0-4
 			mat[i][j] -= 2; // adjust range to -2-+2
+			//mat[i][j] = count;
+			//count++;
 		}
 	}
 	return mat;
@@ -114,8 +138,8 @@ void print_initial_send(int dest, int i, int j, int shift, double **a_temp, doub
 	printf("Sending to P %d:\n", dest);
 	printf("A[%d][%d] :\n", i, shift);
 	print_matrix(a_temp, PART_SIZE, PART_SIZE);
-	printf("B[%d][%d]:\n", shift, j);	
-	print_matrix(b_temp, PART_SIZE, PART_SIZE);
+	//printf("B[%d][%d]:\n", shift, j);	
+	//print_matrix(b_temp, PART_SIZE, PART_SIZE);
 	printf("i: %d, j: %d\n", i, j);
 	printf("========================================\n");
 }
@@ -123,14 +147,11 @@ void print_initial_send(int dest, int i, int j, int shift, double **a_temp, doub
 void send_initial_part(double **a, double **b, double **a_temp, double **b_temp, int i, int j){
 	int dest = j + (i*NUM_DIVISIONS);
 	int shift = (i + j) % ((int) sqrt(NUM_PARTS));
-	//int indices[2] = { i, j };
 	extract_part(a, a_temp, i*PART_SIZE, shift*PART_SIZE);
 	extract_part(b, b_temp, shift*PART_SIZE, j*PART_SIZE);
 	//print_initial_send(dest, i, j, shift, a_temp, b_temp);
-	//MPI_Send(indices, 2, MPI_INT, dest, 0, MPI_COMM_WORLD);
 	MPI_Send(*a_temp, PART_SIZE * PART_SIZE, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
 	MPI_Send(*b_temp, PART_SIZE * PART_SIZE, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
-	sleep(1);
 }
 
 // Sends the initial parts to the corresponding destination node.
@@ -175,10 +196,10 @@ void receive_initial_parts(){
 
 void print_initial_and_control(double **a, double **b){
 	double **control = create_empty_matrix(MAT_SIZE, MAT_SIZE);
-	//printf("A:\n");
-	//print_matrix(a, MAT_SIZE, MAT_SIZE);
-	//printf("B:\n");
-	//print_matrix(b, MAT_SIZE, MAT_SIZE);
+	printf("A:\n");
+	print_matrix(a, MAT_SIZE, MAT_SIZE);
+	printf("B:\n");
+	print_matrix(b, MAT_SIZE, MAT_SIZE);
 	mat_mul_serial(a, b, control, MAT_SIZE, MAT_SIZE, MAT_SIZE);
 	printf("Control:\n");
 	print_matrix(control, MAT_SIZE, MAT_SIZE);
@@ -210,7 +231,6 @@ void init_local_data(){
 		my_data->i = 0;
 		my_data->j = my_data->rank;
 	}
-	// TODO: this should be num grids rather than part size ? 
 	int a_dest_i, a_dest_j, b_dest_i, b_dest_j;
 	a_dest_i = my_data->i;
 	b_dest_j = my_data->j;
@@ -226,8 +246,25 @@ void init_local_data(){
 	}
 	my_data->a_dest = a_dest_j + (a_dest_i * NUM_DIVISIONS);
 	my_data->b_dest = b_dest_j + (b_dest_i * NUM_DIVISIONS);
+	int a_source_i, a_source_j, b_source_i, b_source_j;
+	a_source_i = my_data->i;
+	if(my_data->j == NUM_DIVISIONS - 1){
+		a_source_j = 0;
+	} else {
+		a_source_j = my_data->j + 1;
+	}
+	b_source_j = my_data->j;
+	if(my_data->i == NUM_DIVISIONS - 1){
+		b_source_i = 0;
+	} else {
+		b_source_i = my_data->i + 1;
+	}
+	my_data->a_source = a_source_j + (a_source_i * NUM_DIVISIONS);
+	my_data->b_source = b_source_j + (b_source_i * NUM_DIVISIONS);
 }
 
+// TODO:
+// investigate using transpose
 int main(int argc, char *argv[]){
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &(my_data->rank));
@@ -245,23 +282,44 @@ int main(int argc, char *argv[]){
 		receive_initial_parts();
 	}
 	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
-	MPI_Request request;
+	MPI_Barrier(MPI_COMM_WORLD);
 	MPI_Status s;
 	int i;
 	for(i = 1; i < NUM_DIVISIONS; i++){
-		MPI_Isend(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_dest, 0, MPI_COMM_WORLD, &request);
-		MPI_Recv(my_data->a_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+		MPI_Request req_1;
+		MPI_Request req_2;
+		MPI_Isend(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_dest, 4, MPI_COMM_WORLD, &req_1);
+		MPI_Recv(my_data->a_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_source, 4, MPI_COMM_WORLD, &s);
 		MPI_Barrier(MPI_COMM_WORLD);
-		MPI_Isend(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_dest, 0, MPI_COMM_WORLD, &request);
-		MPI_Recv(my_data->b_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+		MPI_Isend(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_dest, 5, MPI_COMM_WORLD, &req_2);
+		MPI_Recv(my_data->b_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_source, 5, MPI_COMM_WORLD, &s);
+		MPI_Barrier(MPI_COMM_WORLD);
 		memcpy(my_data->a_part_buf, my_data->a_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
 		memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
+		int n;
+		for(n = 0; n < NUM_PARTS; n++) {
+			MPI_Barrier(MPI_COMM_WORLD);
+			if (n == my_data->rank) {
+				printf("P %d received:\n", my_data->rank);
+				printf("A:\n");
+				print_matrix(my_data->a_part, PART_SIZE, PART_SIZE);
+				printf("B:\n");
+				print_matrix(my_data->b_part, PART_SIZE, PART_SIZE);
+				fflush(stdout);
+			}
+		}	
+		MPI_Barrier(MPI_COMM_WORLD);
 		mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
+		MPI_Barrier(MPI_COMM_WORLD);
 	}
-	sleep(rand() % (10 + 1 - 2) + 2);
-	printf("Final C for %d:\n", my_data->rank);
-	print_matrix(my_data->c_part, PART_SIZE, PART_SIZE);
-	
+	for(i = 0; i < NUM_PARTS; i++) {
+		MPI_Barrier(MPI_COMM_WORLD);
+		if (i == my_data->rank) {
+			printf("Final C for %d:\n", my_data->rank);
+			print_matrix(my_data->c_part, PART_SIZE, PART_SIZE);
+			fflush(stdout);			
+		}
+	}	
 	MPI_Finalize();
 	return 0;
 }
