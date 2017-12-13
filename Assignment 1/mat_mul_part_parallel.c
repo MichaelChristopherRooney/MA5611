@@ -45,39 +45,14 @@ void set_matrix_from_buf(double **mat, double *buf, int m, int n){
 	}
 }
 
-
-void mat_mul_serial(double **a, double **b, double **c, int l, int m, int n) {
-	int i, j, k;
-	for (i = 0; i < l; i++) {
-		for (j = 0; j < n; j++) {
-			double sum = 0.0;
-			for (k = 0; k < m; k++) {
-				sum += a[i][k] * b[k][j];
-			}
-			c[i][j] = sum;
-		}
+// Given a "flat" array this will set up a double** array to be the matrix
+double **create_matrix_from_buf(double *buf, int m, int n){
+	double **result = malloc(sizeof(double) * m);
+	int i;
+	for (i = 0; i < m; i++) {
+		result[i] = &(buf[i * n]);
 	}
-}
-
-// Note that this uses c[i][j] += sum;
-// This will called multiple times with the same c and we need to sum the results.
-void mat_mul_part(double **a, double **b, double **c, int l, int m, int n) {
-	int i, j, k;
-	for (i = 0; i < l; i++) {
-		for (j = 0; j < n; j++) {
-			double sum = 0.0;
-			//double old = 0.0;
-			//printf("P %d, old C[%d][%d] is: %f\n", my_data->rank, i, j, c[i][j]);
-			for (k = 0; k < m; k++) {
-				sum += (a[i][k] * b[k][j]);
-				//printf("P %d, mult %f and %f, adding to %f, new value is %f\n", my_data->rank, a[i][k], b[k][j], old, sum);
-				//double filler = 1.0 * a[i][k] * b[k][j];
-				//old = sum;
-			}
-			c[i][j] += sum;
-			//printf("P %d, new C[%d][%d] is: %f\n", my_data->rank, i, j, c[i][j]);
-		}
-	}
+	return result;
 }
 
 void print_matrix(double **mat, int m, int n) {
@@ -115,6 +90,52 @@ double **create_matrix_with_random_values(int m, int n) {
 		}
 	}
 	return mat;
+}
+
+void mat_mul_serial(double **a, double **b, double **c, int l, int m, int n) {
+	int i, j, k;
+	for (i = 0; i < l; i++) {
+		for (j = 0; j < n; j++) {
+			double sum = 0.0;
+			for (k = 0; k < m; k++) {
+				sum += a[i][k] * b[k][j];
+			}
+			c[i][j] = sum;
+		}
+	}
+}
+
+// Note that this uses c[i][j] += sum;
+// This will called multiple times with the same c and we need to sum the results.
+void mat_mul_part(double **a, double **b, double **c, int l, int m, int n) {
+	int i, j, k;
+	for (i = 0; i < l; i++) {
+		for (j = 0; j < n; j++) {
+			double sum = 0.0;
+			//double old = 0.0;
+			//printf("P %d, old C[%d][%d] is: %f\n", my_data->rank, i, j, c[i][j]);
+			for (k = 0; k < m; k++) {
+				sum += (a[i][k] * b[k][j]);
+				//printf("P %d, mult %f and %f, adding to %f, new value is %f\n", my_data->rank, a[i][k], b[k][j], old, sum);
+				//double filler = 1.0 * a[i][k] * b[k][j];
+				//old = sum;
+			}
+			c[i][j] += sum;
+			//printf("P %d, new C[%d][%d] is: %f\n", my_data->rank, i, j, c[i][j]);
+		}
+	}
+}
+
+void print_initial_and_control(double **a, double **b){
+	double **control = create_empty_matrix(MAT_SIZE, MAT_SIZE);
+	printf("A:\n");
+	print_matrix(a, MAT_SIZE, MAT_SIZE);
+	printf("B:\n");
+	print_matrix(b, MAT_SIZE, MAT_SIZE);
+	mat_mul_serial(a, b, control, MAT_SIZE, MAT_SIZE, MAT_SIZE);
+	printf("Control:\n");
+	print_matrix(control, MAT_SIZE, MAT_SIZE);
+	free_mat(control);
 }
 
 void extract_part(double **source, double **dest, int start_row, int start_col){
@@ -164,6 +185,18 @@ void send_all_initial_parts(double **a, double **b){
 	free_mat(b_temp);
 }
 
+// Only process with rank 0 will come here
+void prepare_data(){
+	double **a = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
+	double **b = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
+	print_initial_and_control(a, b);
+	send_all_initial_parts(a, b);
+	my_data->i = 0;
+	my_data->j = 0;
+	extract_part(a, my_data->a_part, 0, 0);
+	extract_part(b, my_data->b_part, 0, 0);
+}
+
 void print_initial_receive(){
 	printf("========================================\n");
 	printf("P %d got i = %d, j = %d\n", my_data->rank, my_data->i, my_data->j);
@@ -185,57 +218,8 @@ void receive_initial_parts(){
 	//print_initial_receive();
 }
 
-void print_initial_and_control(double **a, double **b){
-	double **control = create_empty_matrix(MAT_SIZE, MAT_SIZE);
-	printf("A:\n");
-	print_matrix(a, MAT_SIZE, MAT_SIZE);
-	printf("B:\n");
-	print_matrix(b, MAT_SIZE, MAT_SIZE);
-	mat_mul_serial(a, b, control, MAT_SIZE, MAT_SIZE, MAT_SIZE);
-	printf("Control:\n");
-	print_matrix(control, MAT_SIZE, MAT_SIZE);
-	free_mat(control);
-}
-
-double **create_matrix_from_buf(double *buf, int m, int n){
-	double **result = malloc(sizeof(double) * m);
-	int i;
-	for (i = 0; i < m; i++) {
-		result[i] = &(buf[i * n]);
-	}
-	return result;
-}
-
-void init_local_data(){
-	my_data->a_part_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	my_data->b_part_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	my_data->a_part = create_matrix_from_buf(my_data->a_part_buf, PART_SIZE, PART_SIZE);
-	my_data->b_part = create_matrix_from_buf(my_data->b_part_buf, PART_SIZE, PART_SIZE);
-	my_data->c_part = create_empty_matrix(PART_SIZE, PART_SIZE);
-	my_data->a_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	my_data->b_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	if(my_data->rank >= NUM_DIVISIONS){
-		my_data->i = my_data->rank / NUM_DIVISIONS;
-		my_data->j = my_data->rank - (NUM_DIVISIONS * my_data->i);
-	} else {
-		my_data->i = 0;
-		my_data->j = my_data->rank;
-	}
-	int a_dest_i, a_dest_j, b_dest_i, b_dest_j;
-	a_dest_i = my_data->i;
-	b_dest_j = my_data->j;
-	if(my_data->j == 0){
-		a_dest_j = NUM_DIVISIONS - 1;
-	} else {
-		a_dest_j = my_data->j - 1;
-	}
-	if(my_data->i == 0){
-		b_dest_i = NUM_DIVISIONS - 1;
-	} else {
-		b_dest_i = my_data->i - 1;
-	}
-	my_data->a_dest = a_dest_j + (a_dest_i * NUM_DIVISIONS);
-	my_data->b_dest = b_dest_j + (b_dest_i * NUM_DIVISIONS);
+// Sets the nodes that this process will receive A and B from.
+void set_a_b_source_nodes(){
 	int a_source_i, a_source_j, b_source_i, b_source_j;
 	a_source_i = my_data->i;
 	if(my_data->j == NUM_DIVISIONS - 1){
@@ -253,21 +237,82 @@ void init_local_data(){
 	my_data->b_source = b_source_j + (b_source_i * NUM_DIVISIONS);
 }
 
+// Sets the nodes that this process's A and B copies will be sent to.
+void set_a_b_dest_nodes(){
+	int a_dest_i, a_dest_j, b_dest_i, b_dest_j;
+	a_dest_i = my_data->i;
+	b_dest_j = my_data->j;
+	if(my_data->j == 0){
+		a_dest_j = NUM_DIVISIONS - 1;
+	} else {
+		a_dest_j = my_data->j - 1;
+	}
+	if(my_data->i == 0){
+		b_dest_i = NUM_DIVISIONS - 1;
+	} else {
+		b_dest_i = my_data->i - 1;
+	}
+	my_data->a_dest = a_dest_j + (a_dest_i * NUM_DIVISIONS);
+	my_data->b_dest = b_dest_j + (b_dest_i * NUM_DIVISIONS);
+}
+
+void set_i_j_from_rank(){
+	if(my_data->rank >= NUM_DIVISIONS){
+		my_data->i = my_data->rank / NUM_DIVISIONS;
+		my_data->j = my_data->rank - (NUM_DIVISIONS * my_data->i);
+	} else {
+		my_data->i = 0;
+		my_data->j = my_data->rank;
+	}
+}
+
+void create_buffers(){
+	my_data->a_part_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	my_data->b_part_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	my_data->a_part = create_matrix_from_buf(my_data->a_part_buf, PART_SIZE, PART_SIZE);
+	my_data->b_part = create_matrix_from_buf(my_data->b_part_buf, PART_SIZE, PART_SIZE);
+	my_data->c_part = create_empty_matrix(PART_SIZE, PART_SIZE);
+	my_data->a_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	my_data->b_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+}
+
+void init_local_data(){
+	create_buffers();
+	set_i_j_from_rank();
+	set_a_b_dest_nodes();
+	set_a_b_source_nodes();
+}
+
+void cleanup(){
+	free_mat(my_data->a_part);
+	free_mat(my_data->b_part);
+	free_mat(my_data->c_part);
+	free(my_data->a_recv_buf);
+	free(my_data->b_recv_buf);
+}
+
+void print_partial_results(){
+	int i;
+	for(i = 0; i < NUM_PARTS; i++) {
+		MPI_Barrier(MPI_COMM_WORLD);
+		if (i == my_data->rank) {
+			printf("Final C for %d:\n", my_data->rank);
+			print_matrix(my_data->c_part, PART_SIZE, PART_SIZE);
+			fflush(stdout);			
+		}
+	}	
+}
+
 // TODO:
 // investigate using transpose
+// remove un-needed barries
+// further cleanup
 int main(int argc, char *argv[]){
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &(my_data->rank));
 	init_local_data();
 	if(my_data->rank == 0){
-		double **a = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
-		double **b = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
-		print_initial_and_control(a, b);
-		send_all_initial_parts(a, b);
-		my_data->i = 0;
-		my_data->j = 0;
-		extract_part(a, my_data->a_part, 0, 0);
-		extract_part(b, my_data->b_part, 0, 0);
+		prepare_data();
 	} else {
 		receive_initial_parts();
 	}
@@ -290,19 +335,7 @@ int main(int argc, char *argv[]){
 		mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 		MPI_Barrier(MPI_COMM_WORLD);
 	}
-	for(i = 0; i < NUM_PARTS; i++) {
-		MPI_Barrier(MPI_COMM_WORLD);
-		if (i == my_data->rank) {
-			printf("Final C for %d:\n", my_data->rank);
-			print_matrix(my_data->c_part, PART_SIZE, PART_SIZE);
-			fflush(stdout);			
-		}
-	}	
-	free_mat(my_data->a_part);
-	free_mat(my_data->b_part);
-	free_mat(my_data->c_part);
-	free(my_data->a_recv_buf);
-	free(my_data->b_recv_buf);
+	print_partial_results();
 	MPI_Finalize();
 	return 0;
 }
