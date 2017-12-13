@@ -32,6 +32,11 @@ struct p_data {
 struct p_data data;
 struct p_data *my_data = &data;
 
+// Frees matrices allocated using the single large malloc method
+void free_mat(double **mat){
+	free(*mat);
+	free(mat);
+}
 
 void set_matrix_from_buf(double **mat, double *buf, int m, int n){
 	int i;
@@ -61,28 +66,16 @@ void mat_mul_part(double **a, double **b, double **c, int l, int m, int n) {
 	for (i = 0; i < l; i++) {
 		for (j = 0; j < n; j++) {
 			double sum = 0.0;
+			//double old = 0.0;
+			//printf("P %d, old C[%d][%d] is: %f\n", my_data->rank, i, j, c[i][j]);
 			for (k = 0; k < m; k++) {
 				sum += (a[i][k] * b[k][j]);
-			}
-			if(sum < -20.0){
-				//printf("\n===================n");
-				//printf("Sum is deformed\n");
-				//printf("\n===================n");
-			}
-			if(c[i][j] < -20.0){
-				//printf("\n===================n");
-				//printf("Total pre-add is deformed\n");
-				//printf("\n===================n");
+				//printf("P %d, mult %f and %f, adding to %f, new value is %f\n", my_data->rank, a[i][k], b[k][j], old, sum);
+				//double filler = 1.0 * a[i][k] * b[k][j];
+				//old = sum;
 			}
 			c[i][j] += sum;
-			if(c[i][j] < -20.0){
-				//printf("\n===================n");
-				//printf("Total after add  is deformed\n");
-				//printf("\n===================n");
-			}
-
-
-
+			//printf("P %d, new C[%d][%d] is: %f\n", my_data->rank, i, j, c[i][j]);
 		}
 	}
 }
@@ -100,7 +93,7 @@ void print_matrix(double **mat, int m, int n) {
 
 double **create_empty_matrix(int m, int n) {
 	double **result = malloc(sizeof(double) * m);
-	double *mat = malloc(sizeof(double) * m * n);
+	double *mat = calloc(sizeof(double),  m * n); // needs calloc - got weird results using malloc
 	int i;
 	for (i = 0; i < m; i++) {
 		result[i] = &(mat[i * n]);
@@ -167,10 +160,8 @@ void send_all_initial_parts(double **a, double **b){
 			send_initial_part(a, b, a_temp, b_temp, i, j);
 		}
 	}
-	free(*a_temp); //TODO: proper free
-	free(a_temp);
-	free(*b_temp);
-	free(b_temp);
+	free_mat(a_temp);
+	free_mat(b_temp);
 }
 
 void print_initial_receive(){
@@ -203,8 +194,7 @@ void print_initial_and_control(double **a, double **b){
 	mat_mul_serial(a, b, control, MAT_SIZE, MAT_SIZE, MAT_SIZE);
 	printf("Control:\n");
 	print_matrix(control, MAT_SIZE, MAT_SIZE);
-	free(*control);
-	free(control);
+	free_mat(control);
 }
 
 double **create_matrix_from_buf(double *buf, int m, int n){
@@ -296,18 +286,6 @@ int main(int argc, char *argv[]){
 		MPI_Barrier(MPI_COMM_WORLD);
 		memcpy(my_data->a_part_buf, my_data->a_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
 		memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
-		int n;
-		for(n = 0; n < NUM_PARTS; n++) {
-			MPI_Barrier(MPI_COMM_WORLD);
-			if (n == my_data->rank) {
-				printf("P %d received:\n", my_data->rank);
-				printf("A:\n");
-				print_matrix(my_data->a_part, PART_SIZE, PART_SIZE);
-				printf("B:\n");
-				print_matrix(my_data->b_part, PART_SIZE, PART_SIZE);
-				fflush(stdout);
-			}
-		}	
 		MPI_Barrier(MPI_COMM_WORLD);
 		mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -320,6 +298,11 @@ int main(int argc, char *argv[]){
 			fflush(stdout);			
 		}
 	}	
+	free_mat(my_data->a_part);
+	free_mat(my_data->b_part);
+	free_mat(my_data->c_part);
+	free(my_data->a_recv_buf);
+	free(my_data->b_recv_buf);
 	MPI_Finalize();
 	return 0;
 }
