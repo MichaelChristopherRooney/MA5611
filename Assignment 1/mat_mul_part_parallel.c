@@ -9,6 +9,52 @@
 static const int NUM_PARTS = NUM_ROW_DIVISIONS * NUM_COL_DIVISIONS;
 static const int PART_SIZE = MAT_SIZE / NUM_COL_DIVISIONS;
 
+// Data local to each process
+// Collected into a struct to avoid passing many arguments
+struct p_data {
+	int rank;
+	int i;
+	int j;
+	double **a_part;
+	double **b_part;
+	double *a_part_buf;
+	double *b_part_buf;
+	double *a_recv_buf;
+	double *b_recv_buf;
+	double **c_part;
+};
+
+struct p_data data;
+struct p_data *my_data = &data;
+
+void mat_mul_serial(double **a, double **b, double **c, int l, int m, int n) {
+	int i, j, k;
+	for (i = 0; i < l; i++) {
+		for (j = 0; j < n; j++) {
+			double sum = 0.0;
+			for (k = 0; k < m; k++) {
+				sum += a[i][k] * b[k][j];
+			}
+			c[i][j] = sum;
+		}
+	}
+}
+
+// Note that this uses c[i][j] += sum;
+// This will called multiple times with the same c and we need to sum the results.
+void mat_mul_part(double **a, double **b, double **c, int l, int m, int n) {
+	int i, j, k;
+	for (i = 0; i < l; i++) {
+		for (j = 0; j < n; j++) {
+			double sum = 0.0;
+			for (k = 0; k < m; k++) {
+				sum += a[i][k] * b[k][j];
+			}
+			c[i][j] += sum; 
+		}
+	}
+}
+
 void print_matrix(double **mat, int m, int n) {
 	int i, j;
 	for (i = 0; i < m; i++) {
@@ -51,16 +97,25 @@ void extract_part(double **source, double **dest, int start_row, int start_col){
 	}	
 }
 
+void print_initial_send(int dest, int i, int j, int shift, double **a_temp, double **b_temp){
+	printf("========================================\n");
+	printf("Sending to P %d:\n", dest);
+	printf("A[%d][%d] :\n", i, shift);
+	print_matrix(a_temp, PART_SIZE, PART_SIZE);
+	printf("B[%d][%d]:\n", shift, j);	
+	print_matrix(b_temp, PART_SIZE, PART_SIZE);
+	printf("i: %d, j: %d\n", i, j);
+	printf("========================================\n");
+}
+
 void send_initial_part(double **a, double **b, double **a_temp, double **b_temp, int i, int j){
 	int dest = j + (i*2);
 	int shift = (i + j) % ((int) sqrt(NUM_PARTS));
-	printf("P[%d][%d] (rank %d) should get:\n", i, j, dest);
-	printf("A[%d][%d] :\n", i, shift);
+	int indices[2] = { i, j };
 	extract_part(a, a_temp, i*PART_SIZE, shift*PART_SIZE);
-	print_matrix(a_temp, PART_SIZE, PART_SIZE);
-	printf("B[%d][%d]:\n", shift, j);
 	extract_part(b, b_temp, shift*PART_SIZE, j*PART_SIZE);
-	print_matrix(b_temp, PART_SIZE, PART_SIZE);
+	//print_initial_send(dest, i, j, shift, a_temp, b_temp);
+	MPI_Send(indices, 2, MPI_INT, dest, 0, MPI_COMM_WORLD);
 	MPI_Send(*a_temp, PART_SIZE * PART_SIZE, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
 	MPI_Send(*b_temp, PART_SIZE * PART_SIZE, MPI_DOUBLE, dest, 0, MPI_COMM_WORLD);
 	sleep(1);
@@ -79,45 +134,95 @@ void send_all_initial_parts(double **a, double **b){
 			send_initial_part(a, b, a_temp, b_temp, i, j);
 		}
 	}
+	free(*a_temp);
+	free(a_temp);
+	free(*b_temp);
+	free(b_temp);
 }
 
-void receive_initial_parts(int rank){
-	MPI_Status s;
-	double **a_part = malloc(sizeof(double *) * PART_SIZE);
-	double **b_part = malloc(sizeof(double *) * PART_SIZE);
-	double *a_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	double *b_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	MPI_Recv(a_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
-	MPI_Recv(b_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
-	int i;
-	for(i = 0; i < PART_SIZE; i++){
-		a_part[i] = &(a_buf[i*PART_SIZE]);
-		b_part[i] = &(b_buf[i*PART_SIZE]);
-	}
-	printf("P %d got matrix A:\n", rank);
-	print_matrix(a_part, PART_SIZE, PART_SIZE);
+void print_initial_receive(){
+	printf("========================================\n");
+	printf("P %d got i = %d, j = %d\n", my_data->rank, my_data->i, my_data->j);
+	printf("A:\n");
+	print_matrix(my_data->a_part, PART_SIZE, PART_SIZE);
 	printf("B:\n");
-	print_matrix(b_part, PART_SIZE, PART_SIZE);
+	print_matrix(my_data->b_part, PART_SIZE, PART_SIZE);
+	printf("========================================\n");
 }
 
-int main(int argc, char *argv[]){
-	MPI_Init(&argc, &argv);
-	int rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	//printf("Hello from %d\n", rank);
-	double **a_part = create_empty_matrix(PART_SIZE, PART_SIZE);
-	double **b_part = create_empty_matrix(PART_SIZE, PART_SIZE);
-	if(rank == 0){
-		double **a = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
-		double **b = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
+void receive_initial_parts(){
+	MPI_Status s;
+	int indices[2];
+	MPI_Recv(indices, 2, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+	my_data->i = indices[0];
+	my_data->j = indices[1];
+	MPI_Recv(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+	MPI_Recv(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+	print_initial_receive();
+}
+
+void print_initial_and_control(double **a, double **b){
+		double **control = create_empty_matrix(MAT_SIZE, MAT_SIZE);
 		printf("A:\n");
 		print_matrix(a, MAT_SIZE, MAT_SIZE);
 		printf("B:\n");
 		print_matrix(b, MAT_SIZE, MAT_SIZE);
-		send_all_initial_parts(a, b);
-	} else {
-		receive_initial_parts(rank);
+		mat_mul_serial(a, b, control, MAT_SIZE, MAT_SIZE, MAT_SIZE);
+		printf("Control:\n");
+		print_matrix(control, MAT_SIZE, MAT_SIZE);
+		free(*control);
+		free(control);
+}
+
+/*
+struct p_data {
+	int rank;
+	int my_i;
+	int my_j;
+	double **a_part;
+	double **b_part;
+	double *a_buf;
+	double *b_buf;
+	double *a_recv_buf;
+	double *b_recv_buf;
+};
+
+*/
+
+double **create_matrix_from_buf(double *buf, int m, int n){
+	double **result = malloc(sizeof(double) * m);
+	int i;
+	for (i = 0; i < m; i++) {
+		result[i] = &(buf[i * n]);
 	}
+	return result;
+}
+
+int main(int argc, char *argv[]){
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &(my_data->rank));
+	my_data->a_part_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	my_data->b_part_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	my_data->a_part = create_matrix_from_buf(my_data->a_part_buf, PART_SIZE, PART_SIZE);
+	my_data->b_part = create_matrix_from_buf(my_data->b_part_buf, PART_SIZE, PART_SIZE);
+	my_data->c_part = create_empty_matrix(PART_SIZE, PART_SIZE);
+	my_data->a_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	my_data->b_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	if(my_data->rank == 0){
+		double **a = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
+		double **b = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
+		print_initial_and_control(a, b);
+		send_all_initial_parts(a, b);
+		my_data->i = 0;
+		my_data->j = 0;
+		extract_part(a, my_data->a_part, 0, 0);
+		extract_part(b, my_data->b_part, 0, 0);
+	} else {
+		receive_initial_parts();
+	}
+	
+	//mat_mul_part(a_part, b_part, c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 	MPI_Finalize();
 	return 0;
 }
+
