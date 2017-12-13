@@ -5,10 +5,9 @@
 #include <mpi.h>
 
 #define MAT_SIZE 4
-#define NUM_ROW_DIVISIONS 2
-#define NUM_COL_DIVISIONS 2
-static const int NUM_PARTS = NUM_ROW_DIVISIONS * NUM_COL_DIVISIONS;
-static const int PART_SIZE = MAT_SIZE / NUM_COL_DIVISIONS;
+#define NUM_DIVISIONS 2
+static const int NUM_PARTS = NUM_DIVISIONS * NUM_DIVISIONS;
+static const int PART_SIZE = MAT_SIZE / NUM_DIVISIONS;
 
 // Data local to each process
 // Collected into a struct to avoid passing many arguments
@@ -122,7 +121,7 @@ void print_initial_send(int dest, int i, int j, int shift, double **a_temp, doub
 }
 
 void send_initial_part(double **a, double **b, double **a_temp, double **b_temp, int i, int j){
-	int dest = j + (i*PART_SIZE);
+	int dest = j + (i*NUM_DIVISIONS);
 	int shift = (i + j) % ((int) sqrt(NUM_PARTS));
 	//int indices[2] = { i, j };
 	extract_part(a, a_temp, i*PART_SIZE, shift*PART_SIZE);
@@ -139,8 +138,8 @@ void send_all_initial_parts(double **a, double **b){
 	double **a_temp = create_empty_matrix(PART_SIZE, PART_SIZE);
 	double **b_temp = create_empty_matrix(PART_SIZE, PART_SIZE);
 	int i, j;
-	for(i = 0; i < PART_SIZE; i++){
-		for(j = 0; j < PART_SIZE; j++){
+	for(i = 0; i < NUM_DIVISIONS; i++){
+		for(j = 0; j < NUM_DIVISIONS; j++){
 			if(i == 0 && j == 0){
 				continue;
 			}
@@ -154,9 +153,6 @@ void send_all_initial_parts(double **a, double **b){
 }
 
 void print_initial_receive(){
-	if(my_data->rank != 1){
-		return;
-	}
 	printf("========================================\n");
 	printf("P %d got i = %d, j = %d\n", my_data->rank, my_data->i, my_data->j);
 	printf("A:\n");
@@ -174,7 +170,7 @@ void receive_initial_parts(){
 	memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
 	set_matrix_from_buf(my_data->a_part, my_data->a_part_buf, PART_SIZE, PART_SIZE);
 	set_matrix_from_buf(my_data->b_part, my_data->b_part_buf, PART_SIZE, PART_SIZE);
-	print_initial_receive();
+	//print_initial_receive();
 }
 
 void print_initial_and_control(double **a, double **b){
@@ -189,21 +185,6 @@ void print_initial_and_control(double **a, double **b){
 	free(*control);
 	free(control);
 }
-
-/*
-struct p_data {
-	int rank;
-	int my_i;
-	int my_j;
-	double **a_part;
-	double **b_part;
-	double *a_buf;
-	double *b_buf;
-	double *a_recv_buf;
-	double *b_recv_buf;
-};
-
-*/
 
 double **create_matrix_from_buf(double *buf, int m, int n){
 	double **result = malloc(sizeof(double) * m);
@@ -222,25 +203,29 @@ void init_local_data(){
 	my_data->c_part = create_empty_matrix(PART_SIZE, PART_SIZE);
 	my_data->a_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
 	my_data->b_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
-	if(my_data->rank >= PART_SIZE){
-		my_data->i = my_data->rank / PART_SIZE;
-		my_data->j = my_data->rank - (PART_SIZE * my_data->i);
+	if(my_data->rank >= NUM_DIVISIONS){
+		my_data->i = my_data->rank / NUM_DIVISIONS;
+		my_data->j = my_data->rank - (NUM_DIVISIONS * my_data->i);
 	} else {
 		my_data->i = 0;
 		my_data->j = my_data->rank;
 	}
-	// TODO: this should be num grids rather than part size
-	// TODO: nicer way to do this
-	if(my_data->rank < PART_SIZE){
-		my_data->b_dest = (PART_SIZE * PART_SIZE) - (PART_SIZE - my_data->rank);
-	} else {
-		my_data->b_dest = my_data->rank - PART_SIZE;
-	}
+	// TODO: this should be num grids rather than part size ? 
+	int a_dest_i, a_dest_j, b_dest_i, b_dest_j;
+	a_dest_i = my_data->i;
+	b_dest_j = my_data->j;
 	if(my_data->j == 0){
-		my_data->a_dest = (PART_SIZE * (my_data->i + 1)) - 1;
+		a_dest_j = NUM_DIVISIONS - 1;
 	} else {
-		my_data->a_dest = (PART_SIZE * my_data->i) + my_data->j - 1;
+		a_dest_j = my_data->j - 1;
 	}
+	if(my_data->i == 0){
+		b_dest_i = NUM_DIVISIONS - 1;
+	} else {
+		b_dest_i = my_data->i - 1;
+	}
+	my_data->a_dest = a_dest_j + (a_dest_i * NUM_DIVISIONS);
+	my_data->b_dest = b_dest_j + (b_dest_i * NUM_DIVISIONS);
 }
 
 int main(int argc, char *argv[]){
@@ -263,6 +248,7 @@ int main(int argc, char *argv[]){
 	MPI_Status s;
 	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 	//printf("P(%d) sending A to %d and B to %d\n", my_data->rank, my_data->a_dest, my_data->b_dest);
+	MPI_Barrier(MPI_COMM_WORLD);
 	// Async send A to dest
 	if(my_data->a_dest == 6){
 		printf("%d sending A to 1\n", my_data->rank);
