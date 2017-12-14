@@ -99,13 +99,18 @@ void insert_part(double **source, double **dest, int start_row, int start_col){
 void create_initial_matrices(){	
 	A_MAT = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);
 	B_MAT = create_matrix_with_random_values(MAT_SIZE, MAT_SIZE);	
-	CONTROL_MAT = create_empty_matrix(MAT_SIZE, MAT_SIZE);
 	RESULT_MAT = create_empty_matrix(MAT_SIZE, MAT_SIZE);
+#if USE_CONTROL_MATRIX
+	CONTROL_MAT = create_empty_matrix(MAT_SIZE, MAT_SIZE);
+	start_timer();
 	mat_mul_serial(A_MAT, B_MAT, CONTROL_MAT, MAT_SIZE, MAT_SIZE, MAT_SIZE);
+	end_timer("Serial multiplication");
+#endif
 	print_initial_and_control();
 }
 
 void check_result_matches_control(){
+#if USE_CONTROL_MATRIX
 	int i, j;
 	for(i = 0; i < MAT_SIZE; i++){
 		for(j = 0; j < MAT_SIZE; j++){
@@ -116,4 +121,7 @@ void check_result_matches_control(){
 		}
 	}
 	printf("SUCCESS: serial and parallel results match!\n");
+#else
+	printf("Not using control matrix - cannot verify result!\n");
+#endif
 }

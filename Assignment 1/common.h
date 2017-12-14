@@ -2,8 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 #include <math.h>
 #include <mpi.h>
+
+#define PRINT_INITIAL_MATRICES 0
+#define USE_CONTROL_MATRIX 1
+#define TIME_EXECUTION 1
 
 // Data local to each process
 // Collected into a struct to avoid passing many arguments
@@ -58,3 +63,7 @@ void extract_part(double **source, double **dest, int start_row, int start_col);
 void insert_part(double **source, double **dest, int start_row, int start_col);
 void create_initial_matrices();
 void check_result_matches_control();
+
+// Timing codde
+void start_timer();
+void end_timer(char *s);

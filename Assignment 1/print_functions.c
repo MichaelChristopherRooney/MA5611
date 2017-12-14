@@ -18,12 +18,16 @@ void print_matrix(double **mat, int m, int n) {
 }
 
 void print_initial_and_control(){
+#if PRINT_INITIAL_MATRICES
 	printf("A:\n");
 	print_matrix(A_MAT, MAT_SIZE, MAT_SIZE);
 	printf("B:\n");
 	print_matrix(B_MAT, MAT_SIZE, MAT_SIZE);
+#if USE_CONTROL_MATRIX
 	printf("Control:\n");
 	print_matrix(CONTROL_MAT, MAT_SIZE, MAT_SIZE);
+#endif 
+#endif
 }
 
 void print_initial_send(int dest, int i, int j, int shift, double **a_temp, double **b_temp){

@@ -107,8 +107,8 @@ void create_buffers(){
 }
 
 void init(){
-	MAT_SIZE = 15;
-	NUM_DIVISIONS = 3;
+	MAT_SIZE = 2000;
+	NUM_DIVISIONS = 2;
 	NUM_PARTS = NUM_DIVISIONS * NUM_DIVISIONS;
 	PART_SIZE = MAT_SIZE / NUM_DIVISIONS;
 	MPI_Comm_rank(MPI_COMM_WORLD, &(local_data.rank));
@@ -188,6 +188,7 @@ int main(int argc, char *argv[]){
 	init();
 	if(local_data.rank == 0){
 		create_initial_matrices();
+		start_timer();
 		prepare_data();
 	} else {
 		receive_initial_parts();
@@ -200,8 +201,7 @@ int main(int argc, char *argv[]){
 	}
 	if(local_data.rank == 0){
 		collect_final_result();
-		printf("Final C is:\n");
-		print_matrix(RESULT_MAT, MAT_SIZE, MAT_SIZE);
+		end_timer("Parallel multiplication");
 		check_result_matches_control();
 	} else {
 		send_final_result();	
