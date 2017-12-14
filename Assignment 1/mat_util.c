@@ -10,23 +10,6 @@ void free_mat(double **mat){
 	free(mat);
 }
 
-void set_matrix_from_buf(double **mat, double *buf, int m, int n){
-	int i;
-	for (i = 0; i < m; i++) {
-		mat[i] = &(buf[i * n]);
-	}
-}
-
-// Given a "flat" array this will set up a double** array to be the matrix
-double **create_matrix_from_buf(double *buf, int m, int n){
-	double **result = malloc(sizeof(double) * m);
-	int i;
-	for (i = 0; i < m; i++) {
-		result[i] = &(buf[i * n]);
-	}
-	return result;
-}
-
 double **create_empty_matrix(int m, int n) {
 	double **result = malloc(sizeof(double) * m);
 	double *mat = calloc(sizeof(double),  m * n); // needs calloc - got weird results using malloc

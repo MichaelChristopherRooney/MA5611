@@ -53,8 +53,6 @@ void print_partial_results();
 
 // Functions for creating and working with matrices
 void free_mat(double **mat);
-void set_matrix_from_buf(double **mat, double *buf, int m, int n);
-double **create_matrix_from_buf(double *buf, int m, int n);
 double **create_empty_matrix(int m, int n);
 double **create_matrix_with_random_values(int m, int n);
 void mat_mul_serial(double **a, double **b, double **c, int l, int m, int n);
