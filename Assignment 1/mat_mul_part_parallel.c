@@ -4,7 +4,7 @@
 #include <math.h>
 #include <mpi.h>
 
-#define MAT_SIZE 9
+#define MAT_SIZE 18
 #define NUM_DIVISIONS 3
 static const int NUM_PARTS = NUM_DIVISIONS * NUM_DIVISIONS;
 static const int PART_SIZE = MAT_SIZE / NUM_DIVISIONS;
@@ -303,10 +303,77 @@ void print_partial_results(){
 	}	
 }
 
+// Note: each process should have already multiplied its initial A and B parts before coming here.
+// Send A and B parts to the correct processes, and also receives A and B from the correct processes.
+// Multiplies the received A and B parts
+void do_iteration(){
+	MPI_Status s;
+	MPI_Request req_1;
+	MPI_Request req_2;
+	MPI_Isend(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_dest, 4, MPI_COMM_WORLD, &req_1);
+	MPI_Recv(my_data->a_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_source, 4, MPI_COMM_WORLD, &s);
+	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Isend(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_dest, 5, MPI_COMM_WORLD, &req_2);
+	MPI_Recv(my_data->b_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_source, 5, MPI_COMM_WORLD, &s);
+	MPI_Barrier(MPI_COMM_WORLD);
+	memcpy(my_data->a_part_buf, my_data->a_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
+	memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
+	MPI_Barrier(MPI_COMM_WORLD);
+	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
+	MPI_Barrier(MPI_COMM_WORLD);
+}
+
+// Inserts a partial result into the final result matrix
+void insert_part(double **source, double **dest, int start_row, int start_col){
+	int i, j;
+	for(i = 0; i < PART_SIZE; i++){
+		for(j = 0; j < PART_SIZE; j++){
+			dest[i + start_row][j + start_col] = source[i][j];
+		}
+	}	
+}
+
+// Only process 0 should enter here.
+// Receives partial results from all other processes and combines them.
+void collect_final_result(){
+	MPI_Status s;
+	int i, j;
+	//double *recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
+	//double **recv_mat = create_matrix_from_buf(recv_buf, PART_SIZE, PART_SIZE);
+	double **recv = create_empty_matrix(PART_SIZE, PART_SIZE);
+	double **result = create_empty_matrix(MAT_SIZE, MAT_SIZE);
+	for(i = 0; i < NUM_DIVISIONS; i++){
+		for(j = 0; j < NUM_DIVISIONS; j++){
+			if(i == 0 && j == 0){
+				insert_part(my_data->c_part, result, 0, 0);
+				continue; 
+			}
+			MPI_Barrier(MPI_COMM_WORLD);
+			int recv_source = j + (i*NUM_DIVISIONS);
+			MPI_Recv(*recv, PART_SIZE * PART_SIZE, MPI_DOUBLE, recv_source, 4, MPI_COMM_WORLD, &s);
+			insert_part(recv, result, i * PART_SIZE , j * PART_SIZE);
+		}
+	}
+	printf("Final C is:\n");
+	print_matrix(result, MAT_SIZE, MAT_SIZE);
+	free_mat(recv);
+}
+
+void send_final_result(){
+	int i;
+	for(i = 1; i < NUM_PARTS; i++){
+		MPI_Barrier(MPI_COMM_WORLD);
+		if(my_data->rank == i){
+			MPI_Send(*my_data->c_part, PART_SIZE * PART_SIZE, MPI_DOUBLE, 0, 4, MPI_COMM_WORLD);
+		}
+	}
+}
+
 // TODO:
 // investigate using transpose
-// remove un-needed barries
+// remove un-needed barriers
 // further cleanup
+// use ANY_TAG where possible
 int main(int argc, char *argv[]){
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &(my_data->rank));
@@ -318,24 +385,15 @@ int main(int argc, char *argv[]){
 	}
 	mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
 	MPI_Barrier(MPI_COMM_WORLD);
-	MPI_Status s;
 	int i;
 	for(i = 1; i < NUM_DIVISIONS; i++){
-		MPI_Request req_1;
-		MPI_Request req_2;
-		MPI_Isend(my_data->a_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_dest, 4, MPI_COMM_WORLD, &req_1);
-		MPI_Recv(my_data->a_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->a_source, 4, MPI_COMM_WORLD, &s);
-		MPI_Barrier(MPI_COMM_WORLD);
-		MPI_Isend(my_data->b_part_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_dest, 5, MPI_COMM_WORLD, &req_2);
-		MPI_Recv(my_data->b_recv_buf, PART_SIZE * PART_SIZE, MPI_DOUBLE, my_data->b_source, 5, MPI_COMM_WORLD, &s);
-		MPI_Barrier(MPI_COMM_WORLD);
-		memcpy(my_data->a_part_buf, my_data->a_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
-		memcpy(my_data->b_part_buf, my_data->b_recv_buf, PART_SIZE * PART_SIZE * sizeof(double));
-		MPI_Barrier(MPI_COMM_WORLD);
-		mat_mul_part(my_data->a_part, my_data->b_part, my_data->c_part, PART_SIZE, PART_SIZE, PART_SIZE);
-		MPI_Barrier(MPI_COMM_WORLD);
+		do_iteration();
 	}
-	print_partial_results();
+	if(my_data->rank == 0){
+		collect_final_result();
+	} else {
+		send_final_result();	
+	}
 	MPI_Finalize();
 	return 0;
 }
