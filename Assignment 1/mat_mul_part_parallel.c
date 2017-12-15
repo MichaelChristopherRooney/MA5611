@@ -97,16 +97,21 @@ void create_local_buffers(){
 	local_data.b_recv_buf = malloc(sizeof(double) * PART_SIZE * PART_SIZE);
 }
 
-void local_init(){
-	MAT_SIZE = 90;
-	NUM_DIVISIONS = 3;
+void local_init(int argc, char *argv[]){
+	MAT_SIZE = atoi(argv[1]);
+	NUM_DIVISIONS = atoi(argv[2]);
 	NUM_PARTS = NUM_DIVISIONS * NUM_DIVISIONS;
 	PART_SIZE = MAT_SIZE / NUM_DIVISIONS;
-	MPI_Comm_rank(MPI_COMM_WORLD, &(local_data.rank));
 	create_local_buffers();
 	set_i_j_from_rank();
 	set_a_b_dest_nodes();
 	set_a_b_source_nodes();
+	if(local_data.rank == 0){
+		printf("Matrices are %dx%d\n", MAT_SIZE, MAT_SIZE);
+		printf("Matrices are divided into %d row grids and %d column grids\n", NUM_DIVISIONS, NUM_DIVISIONS);
+		printf("Matrices are divided into a total of %d parts\n", NUM_PARTS);
+		printf("Each part has a size of %dx%d\n", PART_SIZE, PART_SIZE);
+	}	
 }
 
 void local_cleanup(){
@@ -171,7 +176,16 @@ void initial_mat_cleanup(){
 // use ANY_TAG where possible
 int main(int argc, char *argv[]){
 	MPI_Init(&argc, &argv);
-	local_init();
+	MPI_Comm_rank(MPI_COMM_WORLD, &(local_data.rank));
+	if(argc != 3){
+		if(local_data.rank == 0){
+			printf("Expected usage: mpirun ./prog MAT_SIZE NUM_DIVISIONS\n");
+			
+		}
+		MPI_Finalize();
+		return 1;
+	}
+	local_init(argc, argv);
 	if(local_data.rank == 0){ 
 		// Create A and B matrices, send parts to all processes, and get parts for local process
 		create_initial_matrices();
