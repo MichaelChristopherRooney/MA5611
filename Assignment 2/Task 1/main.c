@@ -5,7 +5,6 @@
 
 // Crossover and mutation rate should be in range 0 to 100 inclusive.
 struct config {
-	int max_crossovers_per_pair;
 	int crossover_rate;
 	int max_mutations_per_string_per_iteration;
 	int mutation_rate;
@@ -93,24 +92,26 @@ void do_selection_stage() {
 	population_next = temp;
 }
 
+#define UPPER_MASK 0xFFFF0000
+#define LOWER_MASK 0x0000FFFF
+
 // TODO: support for string size != 32
 // TODO: more advanced crossover
 void do_crossover_stage() {
-	int i, n, j;
+	int i, n;
 	for (i = 0; i < params.pop_size - 1; i++) {
 		for (n = i + 1; n < params.pop_size; n++) {
 			int chance = rand() % 100;
 			if (chance >= params.crossover_rate) {
-				int num_crossovers = (rand() % params.max_crossovers_per_pair) + 1;
-				//printf("Num crossovers: %d\n", num_crossovers);
-				//printf("Crossover %d and %d\n", i, n);
-				for (j = 0; j < num_crossovers; j++) {
-					int bit_num = rand() % params.string_size;
-					int mask = pow(2, bit_num);
-					int i_temp = population[i].string;
-					population[i].string = population[i].string ^ (population[n].string & mask);
-					population[n].string = population[n].string ^ (i_temp & mask);
-				}
+				// extract bottom of i string and top of n string
+				int i_bottom = population[i].string & LOWER_MASK;
+				int n_top = population[n].string & UPPER_MASK;
+				// zero out bottom of i string and top of n string
+				population[i].string = population[i].string & UPPER_MASK;
+				population[n].string = population[n].string & LOWER_MASK;
+				// now put the bottom of i string into the top of n string and vice-verse
+				population[i].string = population[i].string | (n_top >> 16);
+				population[n].string = population[n].string | (i_bottom << 16);
 			}
 		}
 	}
@@ -134,7 +135,7 @@ void do_mutation_stage() {
 
 void do_iteration() {
 	do_selection_stage();
-	//do_crossover_stage();
+	do_crossover_stage();
 	do_mutation_stage();
 	recalculate_fitness();
 }
@@ -142,7 +143,6 @@ void do_iteration() {
 // TODO: read from args
 void init() {
 	srand(time(NULL));
-	params.max_crossovers_per_pair = 3;
 	params.crossover_rate = 60;
 	params.max_mutations_per_string_per_iteration = 2;
 	params.mutation_rate = 10;
@@ -165,7 +165,7 @@ int main(void) {
 	init_population();
 	print_state();
 	int i;
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < 1000; i++) {
 		do_iteration();
 		//print_state();
 	}
