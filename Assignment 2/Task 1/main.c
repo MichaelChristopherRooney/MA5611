@@ -161,7 +161,7 @@ void init() {
 	params.crossover_rate = 60;
 	params.max_mutations_per_string_per_iteration = 2;
 	params.mutation_rate = 10;
-	params.pop_size = 10;
+	params.pop_size = 100;
 	params.string_size = 128;
 	params.string_size_in_ints = params.string_size / 32;
 }
@@ -181,7 +181,7 @@ int main(void) {
 	init_population();
 	print_state();
 	int i;
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < 100; i++) {
 		do_iteration();
 		//print_state();
 	}
