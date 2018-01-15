@@ -28,15 +28,15 @@ struct player_data {
 	int time_saved;
 };
 
-enum game_choice get_player_choice(struct player_data *p, int game_num, int game_results){
-	if(game_num < 2){
+enum game_choice get_player_choice(struct player_data *p, int game_num, int game_results) {
+	if (game_num < 2) {
 		int choice;
-		if(game_num == 0){
+		if (game_num == 0) {
 			choice = p->chromosome & 0x3; // extract bits 0 and 1
 		} else {
-			choice = p->chromosome & 0x12; // extract bits 2 and 3
+			choice = (p->chromosome & 0xC) >> 2; // extract bits 2 and 3
 		}
-		if(choice == 2 || choice == 3){
+		if (choice == 2 || choice == 3) {
 			return rand() % 2;
 		}
 		return choice;
@@ -46,8 +46,8 @@ enum game_choice get_player_choice(struct player_data *p, int game_num, int game
 }
 
 // If even num store in bits 0 and 1, else bits 2 and 3
-int save_results(int prev_results, int new_results, int game_num){
-	if(game_num % 2 == 0){
+int save_results(int prev_results, int new_results, int game_num) {
+	if (game_num % 2 == 0) {
 		prev_results = prev_results & 0x12; // clear bits 0 and 1
 		new_results = new_results + prev_results;
 	} else {
@@ -57,13 +57,13 @@ int save_results(int prev_results, int new_results, int game_num){
 	return new_results;
 }
 
-void print_choices(enum game_choice p1_c, enum game_choice p2_c){
-	if(p1_c == COOPERATE){
+void print_choices(enum game_choice p1_c, enum game_choice p2_c) {
+	if (p1_c == COOPERATE) {
 		printf("Player 1 is cooperating\n");
 	} else {
 		printf("Player 1 is defecting\n");
 	}
-	if(p2_c == COOPERATE){
+	if (p2_c == COOPERATE) {
 		printf("Player 2 is cooperating\n");
 	} else {
 		printf("Player 2 is defecting\n");
@@ -71,9 +71,9 @@ void print_choices(enum game_choice p1_c, enum game_choice p2_c){
 }
 
 // TODO: look up a reward matrix ?
-void get_reward(struct player_data *p1, struct player_data *p2, enum game_choice p1_c, enum game_choice p2_c){
-	if(p1_c == COOPERATE){
-		if(p2_c == COOPERATE){
+void get_reward(struct player_data *p1, struct player_data *p2, enum game_choice p1_c, enum game_choice p2_c) {
+	if (p1_c == COOPERATE) {
+		if (p2_c == COOPERATE) {
 			p1->time_saved += 3;
 			p2->time_saved += 3;
 		} else {
@@ -81,7 +81,7 @@ void get_reward(struct player_data *p1, struct player_data *p2, enum game_choice
 			p2->time_saved += 5;
 		}
 	} else {
-		if(p2_c == COOPERATE){
+		if (p2_c == COOPERATE) {
 			p1->time_saved += 5;
 			p2->time_saved += 0;
 		} else {
@@ -91,7 +91,7 @@ void get_reward(struct player_data *p1, struct player_data *p2, enum game_choice
 	}
 }
 
-int play_round(struct player_data *p1, struct player_data *p2, int game_num, int prev_results){
+int play_round(struct player_data *p1, struct player_data *p2, int game_num, int prev_results) {
 	enum game_choice p1_c = get_player_choice(p1, game_num, prev_results);
 	enum game_choice p2_c = get_player_choice(p2, game_num, prev_results);
 	print_choices(p1_c, p2_c);
@@ -100,7 +100,7 @@ int play_round(struct player_data *p1, struct player_data *p2, int game_num, int
 	return results;
 }
 
-void run_iterations(){
+void run_iterations() {
 	struct player_data *p1 = calloc(1, sizeof(struct player_data));
 	struct player_data *p2 = calloc(1, sizeof(struct player_data));
 	p1->chromosome = rand();
@@ -108,7 +108,7 @@ void run_iterations(){
 	int game_state = 0;
 	int game_results = 0;
 	int i;
-	for(i = 0; i < num_pd_games_per_iter; i++){
+	for (i = 0; i < num_pd_games_per_iter; i++) {
 		printf("======================================\n");
 		printf("Game number %d\n", i);
 		int temp_results = play_round(p1, p2, i, game_results);
@@ -121,7 +121,7 @@ void run_iterations(){
 
 }
 
-int main(void){
+int main(void) {
 	srand(time(NULL));
 	pop_size = 2;
 	num_generations = 10;
