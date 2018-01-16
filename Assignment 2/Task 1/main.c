@@ -3,11 +3,13 @@
 #include <stdlib.h>
 #include <time.h>
 
+// TODO:
+// number of bits than is not divisible by 32
+
 #define NUM_BITS_IN_INT sizeof(int) * 8
 // Crossover and mutation rate should be in range [0, 1]
 struct config {
 	float crossover_rate;
-	int max_mutations_per_string_per_iteration;
 	float mutation_rate;
 	int pop_size;
 	int string_size; // in bits
@@ -28,7 +30,6 @@ struct individual {
 struct individual *population;
 struct individual *population_next;
 
-// TODO: other sizes
 // TODO: use faster method such as power of two
 // n = n & (n-1);
 // count++;
@@ -58,7 +59,6 @@ void recalculate_fitness() {
 			params.highest_fitness = ind->fitness;
 		}
 	}
-	//params.total_fitness /= params.pop_size;
 }
 
 void init_population() {
@@ -131,7 +131,6 @@ void print_state() {
 #define UPPER_MASK 0xFFFF0000
 #define LOWER_MASK 0x0000FFFF
 
-// TODO: support for string size != 32
 // TODO: more advanced crossover
 void do_crossover_stage() {
 	int i, j;
@@ -153,36 +152,19 @@ void do_crossover_stage() {
 			}
 		}
 	}
-	/*
-	int i, n, j;
-	for (i = 0; i < params.pop_size - 1; i++) {
-		for (n = i + 1; n < params.pop_size; n++) {
-			int chance = rand() % 100;
-			if (chance >= params.crossover_rate) {
-				for (j = 0; j < params.string_size_in_ints; j++) {
-					// extract bottom of i string and top of n string
-					
-				}
-
-			}
-		}
-	}
-	*/
 }
 
-// TODO: support for string size != 32
+// Selects a bit to flip using XOR.
+// If chromosome is made of multiple ints it flips a bit in each.
 void do_mutation_stage() {
-	int i, n, j;
+	int i, j;
 	for (i = 0; i < params.pop_size; i++) {
 		int chance = rand() % 100;
 		if ((params.mutation_rate * 100) >= chance) {
-			int num_mutations = (rand() % params.max_mutations_per_string_per_iteration) + 1;
 			for (j = 0; j < params.string_size_in_ints; j++) {
-				for (n = 0; n < num_mutations; n++) {
-					int bit_num = rand() % params.string_size;
-					int mask = pow(2, bit_num);
-					population[i].string[j] = population[i].string[j] ^ mask;
-				}
+				int bit_num = rand() % params.string_size;
+				int mask = pow(2, bit_num);
+				population[i].string[j] = population[i].string[j] ^ mask;
 			}
 
 		}
@@ -200,7 +182,6 @@ void do_iteration() {
 void init() {
 	srand(time(NULL));
 	params.crossover_rate = 0.6; // 60%
-	params.max_mutations_per_string_per_iteration = 2;
 	params.mutation_rate = 0.001; // 0.1%
 	params.pop_size = 100;
 	params.string_size = 32;
