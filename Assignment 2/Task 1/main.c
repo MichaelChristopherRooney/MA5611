@@ -4,11 +4,11 @@
 #include <time.h>
 
 #define NUM_BITS_IN_INT sizeof(int) * 8
-// Crossover and mutation rate should be in range 0 to 100 inclusive.
+// Crossover and mutation rate should be in range [0, 1]
 struct config {
-	int crossover_rate;
+	float crossover_rate;
 	int max_mutations_per_string_per_iteration;
-	int mutation_rate;
+	float mutation_rate;
 	int pop_size;
 	int string_size; // in bits
 	int string_size_in_ints; // string_size / 32
@@ -91,7 +91,7 @@ struct individual *select_individual() {
 	int n;
 	for (n = 0; n < params.pop_size; n++) {
 		struct individual *ind = &(population[n]);
-		selection_weights[n] = ((float) ind->fitness / (float) params.fitness_sum) + prev_prob;
+		selection_weights[n] = ((float)ind->fitness / (float)params.fitness_sum) + prev_prob;
 		weight_sum = weight_sum + selection_weights[n];
 		prev_prob = selection_weights[n];
 	}
@@ -134,6 +134,26 @@ void print_state() {
 // TODO: support for string size != 32
 // TODO: more advanced crossover
 void do_crossover_stage() {
+	int i, j;
+	for (i = 0; i < params.pop_size; i++) {
+		int chance = rand() % 100;
+		if (chance >= (params.crossover_rate * 100)) {
+			// TODO: exclude self from selection ?
+			struct individual *ind1 = &(population[i]);
+			struct individual *ind2 = select_individual();
+			for (j = 0; j < params.string_size_in_ints; j++) {
+				int i_bottom = ind1->string[j] & LOWER_MASK;
+				int n_top = ind2->string[j] & UPPER_MASK;
+				// zero out bottom of i string and top of n string
+				ind1->string[j] = ind1->string[j] & UPPER_MASK;
+				ind2->string[j] = ind2->string[j] & LOWER_MASK;
+				// now put the bottom of i string into the top of n string and vice-verse
+				ind1->string[j] = ind1->string[j] | (n_top >> 16);
+				ind2->string[j] = ind2->string[j] | (i_bottom << 16);
+			}
+		}
+	}
+	/*
 	int i, n, j;
 	for (i = 0; i < params.pop_size - 1; i++) {
 		for (n = i + 1; n < params.pop_size; n++) {
@@ -141,19 +161,13 @@ void do_crossover_stage() {
 			if (chance >= params.crossover_rate) {
 				for (j = 0; j < params.string_size_in_ints; j++) {
 					// extract bottom of i string and top of n string
-					int i_bottom = population[i].string[j] & LOWER_MASK;
-					int n_top = population[n].string[j] & UPPER_MASK;
-					// zero out bottom of i string and top of n string
-					population[i].string[j] = population[i].string[j] & UPPER_MASK;
-					population[n].string[j] = population[n].string[j] & LOWER_MASK;
-					// now put the bottom of i string into the top of n string and vice-verse
-					population[i].string[j] = population[i].string[j] | (n_top >> 16);
-					population[n].string[j] = population[n].string[j] | (i_bottom << 16);
+					
 				}
 
 			}
 		}
 	}
+	*/
 }
 
 // TODO: support for string size != 32
@@ -161,7 +175,7 @@ void do_mutation_stage() {
 	int i, n, j;
 	for (i = 0; i < params.pop_size; i++) {
 		int chance = rand() % 100;
-		if (params.mutation_rate >= chance) {
+		if ((params.mutation_rate * 100) >= chance) {
 			int num_mutations = (rand() % params.max_mutations_per_string_per_iteration) + 1;
 			for (j = 0; j < params.string_size_in_ints; j++) {
 				for (n = 0; n < num_mutations; n++) {
@@ -185,9 +199,9 @@ void do_iteration() {
 // TODO: read from args
 void init() {
 	srand(time(NULL));
-	params.crossover_rate = 60;
+	params.crossover_rate = 0.6; // 60%
 	params.max_mutations_per_string_per_iteration = 2;
-	params.mutation_rate = 10;
+	params.mutation_rate = 0.001; // 0.1%
 	params.pop_size = 100;
 	params.string_size = 32;
 	params.string_size_in_ints = params.string_size / 32;
