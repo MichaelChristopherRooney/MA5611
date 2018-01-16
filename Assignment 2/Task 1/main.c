@@ -12,15 +12,16 @@ struct config {
 	int pop_size;
 	int string_size; // in bits
 	int string_size_in_ints; // string_size / 32
-	float total_fitness; // changes on each iteration
+	float total_fitness_percent; // changes on each iteration
+	int highest_fitness;
+	int fitness_sum;
 };
 
 struct config params;
 
 struct individual {
 	int *string; // TODO: other sizes
-	int num_ones;
-	float fitness;
+	int fitness;
 	int id;
 };
 
@@ -41,21 +42,23 @@ int count_ones(struct individual *ind) {
 			count += copy & mask;
 			copy = copy >> 1;
 		}
-		int a = 0;
 	}
 	return count;
 }
 
 void recalculate_fitness() {
-	params.total_fitness = 0.0f;
+	params.fitness_sum = 0;
+	params.highest_fitness = 0;
 	int i;
 	for (i = 0; i < params.pop_size; i++) {
 		struct individual *ind = &(population[i]);
-		ind->num_ones = count_ones(ind);
-		ind->fitness = (float)ind->num_ones / (float)params.string_size;
-		params.total_fitness += ind->fitness;
+		ind->fitness = count_ones(ind);
+		params.fitness_sum += ind->fitness;
+		if (ind->fitness > params.highest_fitness) {
+			params.highest_fitness = ind->fitness;
+		}
 	}
-	params.total_fitness /= params.pop_size;
+	//params.total_fitness /= params.pop_size;
 }
 
 void init_population() {
@@ -74,20 +77,34 @@ void init_population() {
 	recalculate_fitness();
 }
 
-// TODO: probably need a better way of doing this
+float get_number_between_0_and_1() {
+	float num = rand();
+	return num / RAND_MAX;
+}
+
+static float *selection_weights;
+
+// Note: static array above will be reused so we don't need to call malloc each iteration
 struct individual *select_individual() {
-	while (1) {
-		int i;
-		int chance = rand() % 100;
-		for (i = 0; i < params.pop_size; i++) {
-			struct individual *ind = &(population[i]);
-			float sel_chance = (ind->fitness / params.total_fitness) * 100.0f;
-			if (sel_chance > chance) {
-				//printf("Chance = %d, returing with fitness %f\n", chance, ind->fitness);
-				return ind;
-			}
+	float weight_sum = 0.0f;
+	float prev_prob = 0.0f;
+	int n;
+	for (n = 0; n < params.pop_size; n++) {
+		struct individual *ind = &(population[n]);
+		selection_weights[n] = ((float) ind->fitness / (float) params.fitness_sum) + prev_prob;
+		weight_sum = weight_sum + selection_weights[n];
+		prev_prob = selection_weights[n];
+	}
+	int i;
+	float val = get_number_between_0_and_1() * weight_sum;
+	for (i = 0; i < params.pop_size; i++) {
+		val = val - selection_weights[i];
+		if (val <= 0) {
+			return &(population[i]);
 		}
 	}
+	// handle any rounding error by returning last item
+	return &(population[params.pop_size - 1]);
 }
 
 void do_selection_stage() {
@@ -99,6 +116,16 @@ void do_selection_stage() {
 	struct individual *temp = population;
 	population = population_next;
 	population_next = temp;
+}
+
+void print_state() {
+	printf("===============================================\n");
+	printf("Fitness sum: %d\n", params.fitness_sum);
+	int i;
+	for (i = 0; i < params.pop_size; i++) {
+		//printf("Individual %d, fitness: %d, value 0x%08x\n", population[i].id, population[i].fitness, population[i].string[0]);
+	}
+	printf("===============================================\n");
 }
 
 #define UPPER_MASK 0xFFFF0000
@@ -123,7 +150,7 @@ void do_crossover_stage() {
 					population[i].string[j] = population[i].string[j] | (n_top >> 16);
 					population[n].string[j] = population[n].string[j] | (i_bottom << 16);
 				}
-				
+
 			}
 		}
 	}
@@ -143,7 +170,7 @@ void do_mutation_stage() {
 					population[i].string[j] = population[i].string[j] ^ mask;
 				}
 			}
-			
+
 		}
 	}
 }
@@ -162,29 +189,22 @@ void init() {
 	params.max_mutations_per_string_per_iteration = 2;
 	params.mutation_rate = 10;
 	params.pop_size = 100;
-	params.string_size = 128;
+	params.string_size = 32;
 	params.string_size_in_ints = params.string_size / 32;
-}
-
-void print_state() {
-	printf("===============================================\n");
-	printf("Total fitness: %f\n", params.total_fitness);
-	int i;
-	for (i = 0; i < params.pop_size; i++) {
-		printf("Individual %d num ones: %d\n", i, population[i].num_ones);
-	}
-	printf("===============================================\n");
+	selection_weights = calloc(params.pop_size, sizeof(float));
 }
 
 int main(void) {
 	init();
 	init_population();
-	print_state();
+	printf("%d, %d\n", 0, params.fitness_sum);
+	//print_state();
 	int i;
-	for (i = 0; i < 100; i++) {
+	for (i = 1; i < 100; i++) {
 		do_iteration();
+		printf("%d, %d\n", i, params.fitness_sum);
 		//print_state();
 	}
-	print_state();
+	//print_state();
 	return 0;
 }
