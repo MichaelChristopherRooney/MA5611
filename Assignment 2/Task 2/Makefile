@@ -1,6 +1,6 @@
 OBJECTS = main.o
 CC = gcc
-CFLAGS = -Wall -lm -g
+CFLAGS = -Wall -lm
 EXEC_NAME = prog
 
 all: main.o
