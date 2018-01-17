@@ -168,7 +168,7 @@ void do_mutation_stage() {
 	for (i = 0; i < params.pop_size; i++) {
 		int chance = rand() % 100;
 		if ((params.mutation_rate * 100) >= chance) {
-			int j = 1;
+			int j = 0;
 			if (params.string_size_in_ints > 1) {
 				j = rand() % params.string_size_in_ints;
 			}
