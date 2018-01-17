@@ -7,6 +7,7 @@
 // number of bits than is not divisible by 32
 
 #define NUM_BITS_IN_INT sizeof(int) * 8
+
 // Crossover and mutation rate should be in range [0, 1]
 struct config {
 	float crossover_rate;
@@ -22,9 +23,8 @@ struct config {
 struct config params;
 
 struct individual {
-	int *string; // TODO: other sizes
+	unsigned int *string; // TODO: other sizes
 	int fitness;
-	int id;
 };
 
 struct individual *population;
@@ -67,11 +67,15 @@ void init_population() {
 	int i;
 	for (i = 0; i < params.pop_size; i++) {
 		struct individual *ind = &(population[i]);
-		ind->id = i;
 		ind->string = calloc(params.string_size_in_ints, sizeof(int));
 		int n;
 		for (n = 0; n < params.string_size_in_ints; n++) {
-			ind->string[n] = rand();
+			if (RAND_MAX <= 0xFFFFFF) {
+				ind->string[n] = (rand() << 16) + rand();
+			} else {
+				ind->string[n] = rand();
+			}
+
 		}
 	}
 	recalculate_fitness();
@@ -132,15 +136,17 @@ void print_state() {
 #define UPPER_MASK 0xFFFF0000
 #define LOWER_MASK 0x0000FFFF
 
-// TODO: more advanced crossover
-void do_crossover_stage() {
+static void do_crossover_stage() {
 	int i, j;
 	for (i = 0; i < params.pop_size; i++) {
 		int chance = rand() % 100;
 		if (chance >= (params.crossover_rate * 100)) {
-			// TODO: exclude self from selection ?
 			struct individual *ind1 = &(population[i]);
-			struct individual *ind2 = select_individual();
+			struct individual *ind2;
+			do {
+				int n = rand() % params.pop_size;
+				ind2 = &(population[n]);
+			} while (ind1 == ind2);
 			for (j = 0; j < params.string_size_in_ints; j++) {
 				int i_bottom = ind1->string[j] & LOWER_MASK;
 				int n_top = ind2->string[j] & UPPER_MASK;
@@ -156,18 +162,19 @@ void do_crossover_stage() {
 }
 
 // Selects a bit to flip using XOR.
-// If chromosome is made of multiple ints it flips a bit in each.
+// If chromosome is made of multiple ints then select one to flip the bit in.
 void do_mutation_stage() {
-	int i, j;
+	int i;
 	for (i = 0; i < params.pop_size; i++) {
 		int chance = rand() % 100;
 		if ((params.mutation_rate * 100) >= chance) {
-			for (j = 0; j < params.string_size_in_ints; j++) {
-				int bit_num = rand() % params.string_size;
-				int mask = pow(2, bit_num);
-				population[i].string[j] = population[i].string[j] ^ mask;
+			int j = 1;
+			if (params.string_size_in_ints > 1) {
+				j = rand() % params.string_size_in_ints;
 			}
-
+			int bit_num = rand() % params.string_size;
+			int mask = 1 << bit_num; // 2 ^ bit_num
+			population[i].string[j] = population[i].string[j] ^ mask;
 		}
 	}
 }

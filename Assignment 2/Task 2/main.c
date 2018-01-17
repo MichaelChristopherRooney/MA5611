@@ -22,6 +22,7 @@ static int *chromosomes;
 static int *chromosomes_next;
 static int *time_saved;
 static int total_time_saved;
+static float avg_time_saved;
 
 #define CHROMOSOME_SIZE 20
 
@@ -97,30 +98,33 @@ static int play_round(int p_id_1, int p_id_2, int game_num, int prev_results) {
 	return results;
 }
 
-static void reset_time_saved(){
+static void reset_time_saved() {
 	memset(time_saved, 0, pop_size * sizeof(int));
 	total_time_saved = 0;
 }
 
-static void print_time_saved(){
+static void print_time_saved() {
 	int i;
-	for(i = 0; i < pop_size; i++){
+	for (i = 0; i < pop_size; i++) {
 		printf("Player %d's time saved is: %d\n", i, time_saved[i]);
 	}
 }
 
-static void save_total_time_saved(){
+static void save_total_time_saved() {
 	int i;
-	for(i = 0; i < pop_size; i++){
+	for (i = 0; i < pop_size; i++) {
 		total_time_saved += time_saved[i];
 	}
+	avg_time_saved = (float)total_time_saved / (float)pop_size;
+	printf("Total time saved: %d\n", total_time_saved);
+	//printf("Average time saved: %f\n", avg_time_saved);
 }
 
 // Every player should play every other player
 static void do_round_robin() {
 	int i, n, j;
-	for(i = 0; i < pop_size - 1; i++){
-		for(n = i + 1; n < pop_size; n++){
+	for (i = 0; i < pop_size - 1; i++) {
+		for (n = i + 1; n < pop_size; n++) {
 			int game_results = 0;
 			for (j = 0; j < num_pd_games_per_iter; j++) {
 				int temp_results = play_round(i, n, j, game_results);
@@ -146,7 +150,7 @@ static int select_player() {
 	float prev_prob = 0.0f;
 	int n;
 	for (n = 0; n < pop_size; n++) {
-		selection_weights[n] = ((float) time_saved[n] / (float) total_time_saved) + prev_prob;
+		selection_weights[n] = ((float)time_saved[n] / (float)total_time_saved) + prev_prob;
 		//printf("Assigned weight of %f\n", selection_weights[n]);
 		weight_sum = weight_sum + selection_weights[n];
 		prev_prob = selection_weights[n];
@@ -164,11 +168,10 @@ static int select_player() {
 }
 
 
-static void do_selection(){
+static void do_selection() {
 	int i;
 	for (i = 0; i < pop_size; i++) {
 		int sel = select_player();
-		printf("Selected %d\n", sel);
 		chromosomes_next[i] = chromosomes[sel];
 	}
 	int *temp = chromosomes;
@@ -176,40 +179,95 @@ static void do_selection(){
 	chromosomes_next = temp;
 }
 
-static void do_crossover(){
-	
+// Given a point creates a mask to extract bits after that point
+// For example: with point = 2 it should return 4 
+static int create_mask(int point) {
+	int mask = 0;
+	int i;
+	for (i = 0; i < point; i++) {
+		mask = mask << 1;
+		mask = mask + 1;
+	}
+	return mask;
+}
+
+static void do_crossover() {
+	int i;
+	for (i = 0; i < pop_size; i++) {
+		int chance = rand() % 100;
+		if (chance >= (crossover_rate * 100)) {
+			// select crossover partner (that isn't the same player)
+			int n;
+			do {
+				n = select_player();
+			} while (n == i);
+			int chromosome_1 = chromosomes[i];
+			int chromosome_2 = chromosomes[n];
+			// determine the crossover point and get a mask to do that
+			// TODO: precompute masks to save time
+			int point = rand() % CHROMOSOME_SIZE;
+			int mask = create_mask(point);
+			// extract everything after the crossover point
+			int swap_1 = chromosome_1 & mask;
+			int swap_2 = chromosome_2 & mask;
+			// zero out everything after the crossover point in the original
+			chromosomes[i] = (chromosomes[i] >> point) << point;
+			chromosomes[n] = (chromosomes[n] >> point) << point;
+			// now insert the swapped part
+			chromosomes[i] += swap_2;
+			chromosomes[n] += swap_1;
+		}
+	}
+}
+
+// Selects a bit to flip using XOR.
+static void do_mutation() {
+	int i, j;
+	for (i = 0; i < pop_size; i++) {
+		int chance = rand() % 100;
+		if ((mutation_rate * 100) >= chance) {
+			int bit_num = rand() % CHROMOSOME_SIZE;
+			int mask = 1 << bit_num; // 2 ^ bit_num
+			chromosomes[i] = chromosomes[i] ^ mask;
+			int a = 0;
+		}
+	}
 }
 
 // TODO: read from args
-static void init(){
+static void init() {
 	srand(time(NULL));
 	pop_size = 10;
 	num_generations = 10;
 	num_pd_games_per_iter = 5;
-	crossover_rate = 0.6; // 60%
-	mutation_rate = 0.001; // 0.1%
+	crossover_rate = 0.6f; // 60%
+	mutation_rate = 0.001f; // 0.1%
 	chromosomes = malloc(pop_size * sizeof(int));
 	chromosomes_next = malloc(pop_size * sizeof(int));
 	time_saved = calloc(pop_size, sizeof(int));
 	total_time_saved = 0;
 	selection_weights = malloc(pop_size * sizeof(float));
 	int i;
-	for(i = 0; i < pop_size; i++){
-		chromosomes[i] = rand();
+	for (i = 0; i < pop_size; i++) {
+		if (RAND_MAX <= 0xFFFF) {
+			chromosomes[i] = (rand() << 16) + rand();
+		} else {
+			chromosomes[i] = rand();
+		}
 	}
 }
 
 int main(void) {
 	init();
 	int i;
-	for(i = 0; i < 1; i++){
+	for (i = 0; i < 100; i++) {
 		reset_time_saved();
 		do_round_robin();
 		save_total_time_saved();
 		// TODO: selection, crossover and mutation
 		do_selection();
 		do_crossover();
-		print_time_saved();
+		do_mutation();
 	}
 	return 0;
 }
