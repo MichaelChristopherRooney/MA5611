@@ -77,15 +77,16 @@ void init_population() {
 	recalculate_fitness();
 }
 
-float get_number_between_0_and_1() {
+static float get_number_between_0_and_1() {
 	float num = rand();
 	return num / RAND_MAX;
 }
 
 static float *selection_weights;
 
+// TODO: only initialise selection weights once per generation
 // Note: static array above will be reused so we don't need to call malloc each iteration
-struct individual *select_individual() {
+static struct individual *select_individual() {
 	float weight_sum = 0.0f;
 	float prev_prob = 0.0f;
 	int n;
@@ -107,7 +108,7 @@ struct individual *select_individual() {
 	return &(population[params.pop_size - 1]);
 }
 
-void do_selection_stage() {
+static void do_selection_stage() {
 	int i;
 	for (i = 0; i < params.pop_size; i++) {
 		struct individual *sel = select_individual();

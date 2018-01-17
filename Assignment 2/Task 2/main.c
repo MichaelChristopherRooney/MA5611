@@ -19,7 +19,11 @@ enum game_choice {
 // Use the player's ID to index into here
 // NOTE: see report for chromosome structure
 static int *chromosomes;
+static int *chromosomes_next;
 static int *time_saved;
+static int total_time_saved;
+
+#define CHROMOSOME_SIZE 20
 
 enum game_choice get_player_choice(int p_id, int game_num, int game_results) {
 	if (game_num < 2) {
@@ -95,12 +99,20 @@ static int play_round(int p_id_1, int p_id_2, int game_num, int prev_results) {
 
 static void reset_time_saved(){
 	memset(time_saved, 0, pop_size * sizeof(int));
+	total_time_saved = 0;
 }
 
 static void print_time_saved(){
 	int i;
 	for(i = 0; i < pop_size; i++){
 		printf("Player %d's time saved is: %d\n", i, time_saved[i]);
+	}
+}
+
+static void save_total_time_saved(){
+	int i;
+	for(i = 0; i < pop_size; i++){
+		total_time_saved += time_saved[i];
 	}
 }
 
@@ -118,6 +130,56 @@ static void do_round_robin() {
 	}
 }
 
+static float get_number_between_0_and_1() {
+	float num = rand();
+	return num / RAND_MAX;
+}
+
+
+static float *selection_weights;
+
+// TODO: only initialise selection weights once per generation
+// TODO: double check that this is working
+// Note: static array above will be reused so we don't need to call malloc each iteration
+static int select_player() {
+	float weight_sum = 0.0f;
+	float prev_prob = 0.0f;
+	int n;
+	for (n = 0; n < pop_size; n++) {
+		selection_weights[n] = ((float) time_saved[n] / (float) total_time_saved) + prev_prob;
+		//printf("Assigned weight of %f\n", selection_weights[n]);
+		weight_sum = weight_sum + selection_weights[n];
+		prev_prob = selection_weights[n];
+	}
+	int i;
+	float val = get_number_between_0_and_1() * weight_sum;
+	for (i = 0; i < pop_size; i++) {
+		val = val - selection_weights[i];
+		if (val <= 0) {
+			return i;
+		}
+	}
+	// handle any rounding error by returning last item
+	return pop_size - 1;
+}
+
+
+static void do_selection(){
+	int i;
+	for (i = 0; i < pop_size; i++) {
+		int sel = select_player();
+		printf("Selected %d\n", sel);
+		chromosomes_next[i] = chromosomes[sel];
+	}
+	int *temp = chromosomes;
+	chromosomes = chromosomes_next;
+	chromosomes_next = temp;
+}
+
+static void do_crossover(){
+
+}
+
 // TODO: read from args
 static void init(){
 	srand(time(NULL));
@@ -127,7 +189,10 @@ static void init(){
 	crossover_rate = 0.6; // 60%
 	mutation_rate = 0.001; // 0.1%
 	chromosomes = malloc(pop_size * sizeof(int));
+	chromosomes_next = malloc(pop_size * sizeof(int));
 	time_saved = calloc(pop_size, sizeof(int));
+	total_time_saved = 0;
+	selection_weights = malloc(pop_size * sizeof(float));
 	int i;
 	for(i = 0; i < pop_size; i++){
 		chromosomes[i] = rand();
@@ -137,12 +202,15 @@ static void init(){
 int main(void) {
 	init();
 	int i;
-	for(i = 0; i < num_generations; i++){
+	for(i = 0; i < 1; i++){
 		reset_time_saved();
 		do_round_robin();
+		save_total_time_saved();
 		// TODO: selection, crossover and mutation
+		do_selection();
+		do_crossover();
 		print_time_saved();
 	}
-
+	return 0;
 }
 
