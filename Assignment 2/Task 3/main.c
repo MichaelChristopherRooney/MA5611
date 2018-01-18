@@ -79,18 +79,18 @@ static void get_reward(int p_id_1, int p_id_2, enum game_choice p1_c, enum game_
 	if (p1_c == COOPERATE) {
 		if (p2_c == COOPERATE) {
 			time_saved[p_id_1] += 3;
-			//time_saved[p_id_2] += 3;
+			time_saved[p_id_2] += 3;
 		} else {
 			time_saved[p_id_1] += 0;
-			//time_saved[p_id_2] += 5;
+			time_saved[p_id_2] += 5;
 		}
 	} else {
 		if (p2_c == COOPERATE) {
 			time_saved[p_id_1] += 5;
-			//time_saved[p_id_2] += 0;
+			time_saved[p_id_2] += 0;
 		} else {
 			time_saved[p_id_1] += 1;
-			//time_saved[p_id_2] += 1;
+			time_saved[p_id_2] += 1;
 		}
 	}
 }
@@ -128,6 +128,7 @@ static void save_total_time_saved() {
 }
 
 // Every player should play every other player
+/*
 static void do_round_robin() {
 	int block_start = (rank - 1) * work_block_size; // rank - 1 as root is not doing this work
 	int block_end = (rank * work_block_size) - 1;
@@ -139,6 +140,22 @@ static void do_round_robin() {
 				continue;
 			}
 			printf("Rank %d: %d is playing %d\n", rank, i, n);
+			int game_results = 0;
+			for (j = 0; j < num_pd_games_per_iter; j++) {
+				int temp_results = play_round(i, n, j, game_results);
+				game_results = save_results(game_results, temp_results, j);
+			}
+		}
+	}
+}
+*/
+
+// Every player should play every other player
+static void do_round_robin() {
+	int i, n, j;
+	for (i = 0; i < pop_size; i++) {
+		n = (rank - 1) + i + 1;
+		for (n; n < pop_size; n = n + num_worker_nodes) {
 			int game_results = 0;
 			for (j = 0; j < num_pd_games_per_iter; j++) {
 				int temp_results = play_round(i, n, j, game_results);
@@ -267,11 +284,13 @@ static void init() {
 		int i;
 		for (i = 0; i < pop_size; i++) {
 			if (RAND_MAX <= 0xFFFF) {
-				chromosomes[i] = (rand() << 16) + rand();
+				//chromosomes[i] = (rand() << 16) + rand();
 			} else {
-				chromosomes[i] = rand();
+				//chromosomes[i] = rand();make
 			}
+			chromosomes[i] = 0;
 		}
+	
 	}
 }
 
@@ -292,7 +311,7 @@ int main(int argc, char *argv[]){
 	MPI_Comm_size(MPI_COMM_WORLD, &num_nodes);
 	init();
 	int i;
-	for (i = 0; i < num_generations; i++) {
+	for (i = 0; i < 1; i++) {
 		if(rank == 0){
 			reset_time_saved();
 			send_data_to_slaves();
