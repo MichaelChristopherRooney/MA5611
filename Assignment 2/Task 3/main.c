@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <mpi.h>
+
+static int rank;
+static int num_nodes;
+static int num_worker_nodes;
+static int work_block_size;
 
 // Params to be read in from the command line
 static int pop_size;
@@ -73,21 +79,22 @@ static void get_reward(int p_id_1, int p_id_2, enum game_choice p1_c, enum game_
 	if (p1_c == COOPERATE) {
 		if (p2_c == COOPERATE) {
 			time_saved[p_id_1] += 3;
-			time_saved[p_id_2] += 3;
+			//time_saved[p_id_2] += 3;
 		} else {
 			time_saved[p_id_1] += 0;
-			time_saved[p_id_2] += 5;
+			//time_saved[p_id_2] += 5;
 		}
 	} else {
 		if (p2_c == COOPERATE) {
 			time_saved[p_id_1] += 5;
-			time_saved[p_id_2] += 0;
+			//time_saved[p_id_2] += 0;
 		} else {
 			time_saved[p_id_1] += 1;
-			time_saved[p_id_2] += 1;
+			//time_saved[p_id_2] += 1;
 		}
 	}
 }
+
 
 static int play_round(int p_id_1, int p_id_2, int game_num, int prev_results) {
 	enum game_choice p1_c = get_player_choice(p_id_1, game_num, prev_results);
@@ -122,9 +129,16 @@ static void save_total_time_saved() {
 
 // Every player should play every other player
 static void do_round_robin() {
+	int block_start = (rank - 1) * work_block_size; // rank - 1 as root is not doing this work
+	int block_end = (rank * work_block_size) - 1;
+	printf("%d is handling block starting at %d and ending at %d\n", rank, block_start, block_end);
 	int i, n, j;
-	for (i = 0; i < pop_size - 1; i++) {
-		for (n = i + 1; n < pop_size; n++) {
+	for(i = block_start; i <= block_end; i++){
+		for(n = 0; n < pop_size; n++){
+			if(i == n){
+				continue;
+			}
+			printf("Rank %d: %d is playing %d\n", rank, i, n);
 			int game_results = 0;
 			for (j = 0; j < num_pd_games_per_iter; j++) {
 				int temp_results = play_round(i, n, j, game_results);
@@ -222,13 +236,14 @@ static void do_crossover() {
 
 // Selects a bit to flip using XOR.
 static void do_mutation() {
-	int i;
+	int i, j;
 	for (i = 0; i < pop_size; i++) {
 		int chance = rand() % 100;
 		if ((mutation_rate * 100) >= chance) {
 			int bit_num = rand() % CHROMOSOME_SIZE;
 			int mask = 1 << bit_num; // 2 ^ bit_num
 			chromosomes[i] = chromosomes[i] ^ mask;
+			int a = 0;
 		}
 	}
 }
@@ -237,7 +252,7 @@ static void do_mutation() {
 static void init() {
 	srand(time(NULL));
 	pop_size = 10;
-	num_generations = 10;
+	num_generations = 1;
 	num_pd_games_per_iter = 5;
 	crossover_rate = 0.6f; // 60%
 	mutation_rate = 0.001f; // 0.1%
@@ -246,28 +261,54 @@ static void init() {
 	time_saved = calloc(pop_size, sizeof(int));
 	total_time_saved = 0;
 	selection_weights = malloc(pop_size * sizeof(float));
-	int i;
-	for (i = 0; i < pop_size; i++) {
-		if (RAND_MAX <= 0xFFFF) {
-			chromosomes[i] = (rand() << 16) + rand();
-		} else {
-			chromosomes[i] = rand();
+	num_worker_nodes = num_nodes - 1;
+	work_block_size = pop_size / num_worker_nodes;
+	if(rank == 0){
+		int i;
+		for (i = 0; i < pop_size; i++) {
+			if (RAND_MAX <= 0xFFFF) {
+				chromosomes[i] = (rand() << 16) + rand();
+			} else {
+				chromosomes[i] = rand();
+			}
 		}
 	}
 }
 
-int main(void) {
+// Sends a broadcast of ALL chromosomes to each rank besides root
+static void send_data_to_slaves(){
+	MPI_Bcast(chromosomes, pop_size, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+static void get_data_from_master(){
+	MPI_Status s;
+
+	MPI_Bcast(chromosomes, pop_size, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+int main(int argc, char *argv[]){
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &num_nodes);
 	init();
 	int i;
 	for (i = 0; i < num_generations; i++) {
-		reset_time_saved();
-		do_round_robin();
-		save_total_time_saved();
-		// TODO: selection, crossover and mutation
-		do_selection();
-		do_crossover();
-		do_mutation();
+		if(rank == 0){
+			reset_time_saved();
+			send_data_to_slaves();
+			//save_total_time_saved();
+			//do_selection();
+			//do_crossover();
+			//do_mutation();
+		} else {
+			get_data_from_master();
+			sleep(3);
+			do_round_robin();
+			save_total_time_saved();
+		}
+		
 	}
+	MPI_Finalize();
 	return 0;
 }
 
