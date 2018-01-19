@@ -27,6 +27,7 @@ enum game_choice {
 static int *chromosomes;
 static int *chromosomes_next;
 static int *time_saved;
+static int *time_saved_recv_buffer;
 static int total_time_saved;
 static float avg_time_saved;
 
@@ -105,52 +106,7 @@ static int play_round(int p_id_1, int p_id_2, int game_num, int prev_results) {
 	return results;
 }
 
-static void reset_time_saved() {
-	memset(time_saved, 0, pop_size * sizeof(int));
-	total_time_saved = 0;
-}
-
-static void print_time_saved() {
-	int i;
-	for (i = 0; i < pop_size; i++) {
-		printf("Player %d's time saved is: %d\n", i, time_saved[i]);
-	}
-}
-
-static void save_total_time_saved() {
-	int i;
-	for (i = 0; i < pop_size; i++) {
-		total_time_saved += time_saved[i];
-	}
-	avg_time_saved = (float)total_time_saved / (float)pop_size;
-	printf("Total time saved: %d\n", total_time_saved);
-	//printf("Average time saved: %f\n", avg_time_saved);
-}
-
-// Every player should play every other player
-/*
-static void do_round_robin() {
-	int block_start = (rank - 1) * work_block_size; // rank - 1 as root is not doing this work
-	int block_end = (rank * work_block_size) - 1;
-	printf("%d is handling block starting at %d and ending at %d\n", rank, block_start, block_end);
-	int i, n, j;
-	for(i = block_start; i <= block_end; i++){
-		for(n = 0; n < pop_size; n++){
-			if(i == n){
-				continue;
-			}
-			printf("Rank %d: %d is playing %d\n", rank, i, n);
-			int game_results = 0;
-			for (j = 0; j < num_pd_games_per_iter; j++) {
-				int temp_results = play_round(i, n, j, game_results);
-				game_results = save_results(game_results, temp_results, j);
-			}
-		}
-	}
-}
-*/
-
-// Every player should play every other player
+// See report for a description of the algorithm used here.
 static void do_round_robin() {
 	int i, n, j;
 	for (i = 0; i < pop_size; i++) {
@@ -260,7 +216,6 @@ static void do_mutation() {
 			int bit_num = rand() % CHROMOSOME_SIZE;
 			int mask = 1 << bit_num; // 2 ^ bit_num
 			chromosomes[i] = chromosomes[i] ^ mask;
-			int a = 0;
 		}
 	}
 }
@@ -268,8 +223,8 @@ static void do_mutation() {
 // TODO: read from args
 static void init() {
 	srand(time(NULL));
-	pop_size = 10;
-	num_generations = 1;
+	pop_size = 1000;
+	num_generations = 10;
 	num_pd_games_per_iter = 5;
 	crossover_rate = 0.6f; // 60%
 	mutation_rate = 0.001f; // 0.1%
@@ -281,6 +236,7 @@ static void init() {
 	num_worker_nodes = num_nodes - 1;
 	work_block_size = pop_size / num_worker_nodes;
 	if(rank == 0){
+		time_saved_recv_buffer = malloc(pop_size * sizeof(int));
 		int i;
 		for (i = 0; i < pop_size; i++) {
 			if (RAND_MAX <= 0xFFFF) {
@@ -295,14 +251,55 @@ static void init() {
 }
 
 // Sends a broadcast of ALL chromosomes to each rank besides root
-static void send_data_to_slaves(){
+static void send_chromosomes_to_slaves(){
 	MPI_Bcast(chromosomes, pop_size, MPI_INT, 0, MPI_COMM_WORLD);
 }
 
-static void get_data_from_master(){
+// Receive chromosome data from master
+static void get_chromosomes_from_master(){
 	MPI_Status s;
-
 	MPI_Bcast(chromosomes, pop_size, MPI_INT, 0, MPI_COMM_WORLD);
+}
+
+// Send time saved back to master
+void send_data_to_master(){
+	//printf("Rank %d sending data to root\n", rank);
+	MPI_Send(time_saved, pop_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
+}
+
+static void reset_time_saved(){
+	total_time_saved = 0;
+	memset(time_saved, 0, pop_size * sizeof(int));
+}
+
+static void get_total_time_saved(){
+	int i;
+	for (i = 0; i < pop_size; i++) {
+		total_time_saved += time_saved[i];
+	}
+	printf("Total time saved: %d\n", total_time_saved);
+}
+
+// Get time saved back from slaves.
+// Each slave computes a partial time saved for each chromosome.
+// The master needs to sum the results here.
+// The master first resets the current time saved for each chromosome, and the total time saved.
+// Note: reset_time_saved should be called before this so the buffer starts with all zeros.
+static void receive_time_saved_from_slaves(){
+	reset_time_saved();
+	int i;
+	for(i = 0; i < num_worker_nodes; i++){
+		//printf("Root waiting to get data from %d\n", i + 1);
+		MPI_Status s;
+		MPI_Recv(time_saved_recv_buffer, pop_size, MPI_INT, i + 1, MPI_ANY_TAG, MPI_COMM_WORLD, &s);
+		int n;
+		for(n = 0; n < pop_size; n++){
+			time_saved[n] = time_saved[n] + time_saved_recv_buffer[n];
+		}
+		//printf("Root got data from %d\n", i + 1);
+	}
+	get_total_time_saved();
+
 }
 
 int main(int argc, char *argv[]){
@@ -311,21 +308,19 @@ int main(int argc, char *argv[]){
 	MPI_Comm_size(MPI_COMM_WORLD, &num_nodes);
 	init();
 	int i;
-	for (i = 0; i < 1; i++) {
+	for (i = 0; i < num_generations; i++) {
 		if(rank == 0){
-			reset_time_saved();
-			send_data_to_slaves();
-			//save_total_time_saved();
-			//do_selection();
-			//do_crossover();
-			//do_mutation();
+			send_chromosomes_to_slaves();
+			receive_time_saved_from_slaves();
+			do_selection();
+			do_crossover();
+			do_mutation();
 		} else {
-			get_data_from_master();
-			sleep(3);
+			reset_time_saved();
+			get_chromosomes_from_master();
 			do_round_robin();
-			save_total_time_saved();
+			send_data_to_master();
 		}
-		
 	}
 	MPI_Finalize();
 	return 0;
