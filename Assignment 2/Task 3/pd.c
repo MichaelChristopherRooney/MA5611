@@ -5,17 +5,12 @@ enum game_choice {
 	DEFECT = 1,
 };
 
-void reset_time_saved(){
-	total_time_saved = 0;
-	memset(time_saved, 0, pop_size * sizeof(int));
-}
-
 void get_total_time_saved(){
 	int i;
 	for (i = 0; i < pop_size; i++) {
 		total_time_saved += time_saved[i];
 	}
-	printf("Total time saved: %d\n", total_time_saved);
+	printf("Total time saved: %lld\n", total_time_saved);
 }
 
 static enum game_choice get_player_choice(int p_id, int game_num, int game_results) {
@@ -81,8 +76,7 @@ static int play_round(int p_id_1, int p_id_2, int game_num, int prev_results) {
 void do_round_robin() {
 	int i, n, j;
 	for (i = 0; i < pop_size; i++) {
-		n = (rank - 1) + i + 1;
-		for (n; n < pop_size; n = n + num_worker_nodes) {
+		for (n = (rank - 1) + i + 1; n < pop_size; n = n + num_worker_nodes) {
 			int game_results = 0;
 			for (j = 0; j < num_pd_games_per_iter; j++) {
 				int temp_results = play_round(i, n, j, game_results);

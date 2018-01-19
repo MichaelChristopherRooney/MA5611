@@ -74,7 +74,7 @@ void save_total_time_saved() {
 		total_time_saved += time_saved[i];
 	}
 	avg_time_saved = (float)total_time_saved / (float)pop_size;
-	printf("Total time saved: %d\n", total_time_saved);
+	printf("Total time saved: %lld\n", total_time_saved);
 	//printf("Average time saved: %f\n", avg_time_saved);
 }
 

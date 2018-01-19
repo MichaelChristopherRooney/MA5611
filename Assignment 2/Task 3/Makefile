@@ -1,6 +1,6 @@
 OBJECTS = main.o genetic.o pd.o
 CC = mpicc
-CFLAGS = -Wall -lm
+CFLAGS = -Wall -lm -g
 EXEC_NAME = prog
 
 all: main.o genetic.o pd.o

@@ -1,6 +1,5 @@
 #include "common.h"
 
-// TODO: read from args
 static void init(char *argv[]) {
 	srand(time(NULL));
 	pop_size = atoi(argv[1]);
@@ -10,7 +9,7 @@ static void init(char *argv[]) {
 	mutation_rate = atof(argv[5]);
 	chromosomes = malloc(pop_size * sizeof(int));
 	chromosomes_next = malloc(pop_size * sizeof(int));
-	time_saved = calloc(pop_size, sizeof(int));
+	time_saved = calloc(pop_size, sizeof(long));
 	total_time_saved = 0;
 	selection_weights = malloc(pop_size * sizeof(float));
 	int i;

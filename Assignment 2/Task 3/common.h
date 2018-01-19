@@ -21,14 +21,13 @@ float mutation_rate;
 // NOTE: see report for chromosome structure
 int *chromosomes;
 int *chromosomes_next;
-int *time_saved;
-int *time_saved_recv_buffer;
-int total_time_saved;
+unsigned long long *time_saved;
+unsigned long long *time_saved_recv_buffer;
+unsigned long long total_time_saved;
 
 #define CHROMOSOME_SIZE 20
 
 float *selection_weights;
 void do_round_robin();
 void do_genetic_part();
-void reset_time_saved();
 void get_total_time_saved();
