@@ -18,7 +18,7 @@ float mutation_rate;
 int *chromosomes;
 int *chromosomes_next;
 int *time_saved;
-long total_time_saved;
+unsigned long long total_time_saved;
 float avg_time_saved;
 
 void reset_time_saved();

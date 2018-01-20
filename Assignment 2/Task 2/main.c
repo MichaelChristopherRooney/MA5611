@@ -9,7 +9,7 @@ static void init(char *argv[]) {
 	mutation_rate = atof(argv[5]);
 	chromosomes = malloc(pop_size * sizeof(int));
 	chromosomes_next = malloc(pop_size * sizeof(int));
-	time_saved = calloc(pop_size, sizeof(long));
+	time_saved = calloc(pop_size, sizeof(unsigned long long));
 	total_time_saved = 0;
 	selection_weights = malloc(pop_size * sizeof(float));
 	int i;
