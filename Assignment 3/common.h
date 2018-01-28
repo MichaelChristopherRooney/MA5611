@@ -27,6 +27,12 @@ int RANK;
 int LOCAL_NCOLS;
 int LOCAL_NROWS;
 
+// The buffers for receiving data from each surrounding node
+double *TOP_RECV_BUF;
+double *BOTTOM_RECV_BUF;
+double *LEFT_RECV_BUF;
+double *RIGHT_RECV_BUF;
+
 MPI_Comm CART_COMM;
 
 // Grid functions and data

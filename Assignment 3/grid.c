@@ -5,6 +5,7 @@ static void print_local_grid(){
 	int i, n;
 	for(i = 0; i < LOCAL_NROWS; i++){
 		for(n = 0; n < LOCAL_NCOLS; n++){
+			//printf("%d, %d\n", i, n);
 			printf("%f, ", grid[i][n]);
 		}
 		printf("\n");
@@ -24,23 +25,31 @@ void print_all_grids(){
 }
 
 static void create_grid(){
-	grid = calloc(NROWS, sizeof(double *));
-	double *temp = calloc(NCOLS * NROWS, sizeof(double));
+	grid = calloc(LOCAL_NROWS, sizeof(double *));
+	double *temp = calloc(LOCAL_NCOLS * LOCAL_NROWS, sizeof(double));
 	int i;	
-	for(i = 0; i < NROWS; i++){
-		grid[i] = &(temp[NCOLS * i]);
+	for(i = 0; i < LOCAL_NROWS; i++){
+		grid[i] = &(temp[LOCAL_NCOLS * i]);
 	}
-	prev_grid = calloc(NROWS, sizeof(double *));
-	temp = calloc(NCOLS * NROWS, sizeof(double));
-	for(i = 0; i < NROWS; i++){
-		prev_grid[i] = &(temp[NCOLS * i]);
+	prev_grid = calloc(LOCAL_NROWS, sizeof(double *));
+	temp = calloc(NCOLS * LOCAL_NROWS, sizeof(double));
+	for(i = 0; i < LOCAL_NROWS; i++){
+		prev_grid[i] = &(temp[LOCAL_NCOLS * i]);
+	}
+	int count = 1;
+	int n;
+	for(i = 0; i < LOCAL_NROWS; i++){
+		for(n = 0; n < LOCAL_NCOLS; n++){
+			grid[i][n] = count;
+			count++;
+		}
 	}
 }
 
-#define LEFT_VALUE 75
-#define RIGHT_VALUE 25
-#define TOP_VALUE 100
-#define BOTTOM_VALUE 50
+#define LEFT_VALUE 175
+#define RIGHT_VALUE 125
+#define TOP_VALUE 200
+#define BOTTOM_VALUE 150
 
 void init_grid(){
 	create_grid();
