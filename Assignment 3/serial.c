@@ -80,4 +80,5 @@ int main(void){
 		do_iteration();
 		print_grid();
 	}
+	return 0;
 }
