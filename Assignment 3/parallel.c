@@ -31,7 +31,7 @@ static void init(int argc, char *argv[]){
 // TODO: break this up into smaller functions
 static void exchange(){
 	MPI_Datatype col_vec;
-	MPI_Type_vector(LOCAL_NROWS, 1, LOCAL_NCOLS, MPI_DOUBLE, &col_vec);
+	MPI_Type_vector(LOCAL_NROWS - 2, 1, LOCAL_NCOLS, MPI_DOUBLE, &col_vec);
 	MPI_Type_commit(&col_vec);
 	if(LOCAL_Y_COORD != 0){
 		printf("hey\n");
@@ -70,10 +70,37 @@ static void exchange(){
 	MPI_Type_free(&col_vec);
 }
 
+static void do_iteration(){
+	int col_start, col_end;
+	if(LOCAL_X_COORD == 0){ // leftmost in x dim
+		col_start = 2;
+		col_end = LOCAL_NCOLS - 1;
+	} else if(LOCAL_X_COORD == MPI_CART_DIMS[X_INDEX] - 1){ // rightmost in x dim
+		col_start = 1;
+		col_end = LOCAL_NCOLS - 2;
+	} else { // not at either x edge
+		// TODO:
+	}
+	int i, n;
+	for(i = 2; i < LOCAL_NROWS - 2; i++){
+		for(n = col_start; n < col_end; n++){
+			//printf("Rank %d: i = %d, n = %d\n", RANK, i, n);
+			prev_grid[i][n] = (grid[i-1][n] + grid[i+1][n] + grid[i][n-1] + grid[i][n+1]) / 4.0;
+		}
+	}
+	double **temp = grid;
+	grid = prev_grid;
+	prev_grid = temp;
+}
+
 int main(int argc, char *argv[]){
 	init(argc, argv);
-	print_all_grids();
-	exchange();	
+	int i;
+	//print_all_grids();
+	for(i = 0; i < 100; i++){
+		exchange();
+		do_iteration();
+	}
 	print_all_grids();
 	MPI_Finalize();
 	return 0;

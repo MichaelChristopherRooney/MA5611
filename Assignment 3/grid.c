@@ -48,10 +48,10 @@ static void create_grid(){
 }
 
 // TODO change these back when done debugging
-#define LEFT_VALUE 10
-#define RIGHT_VALUE 10
-#define TOP_VALUE 10
-#define BOTTOM_VALUE 10
+#define LEFT_VALUE 75
+#define RIGHT_VALUE 25
+#define TOP_VALUE 100
+#define BOTTOM_VALUE 50
 
 void init_grid(){
 	create_grid();
