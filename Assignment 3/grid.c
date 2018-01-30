@@ -1,10 +1,11 @@
 #include "common.h"
 
+// Note: doesn't print extra space used for receiving from other nodes
 static void print_local_grid(){
 	printf("=======================================\n");
 	int i, n;
-	for(i = 0; i < LOCAL_NROWS; i++){
-		for(n = 0; n < LOCAL_NCOLS; n++){
+	for(i = 1; i < LOCAL_NROWS - 1; i++){
+		for(n = 1; n < LOCAL_NCOLS - 1; n++){
 			//printf("%d, %d\n", i, n);
 			printf("%f, ", grid[i][n]);
 		}

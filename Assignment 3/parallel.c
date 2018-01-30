@@ -1,8 +1,8 @@
 #include "common.h"
 
 static void init_mpi_cart_grid(){
-	NCOLS = 10;
-	NROWS = 10;
+	NCOLS = 9;
+	NROWS = 9;
 	int dims_tmp[2] = { 0, 0 };
 	int pbc[2] = { 0, 0 };
 	MPI_Dims_create(NUM_NODES, 2, dims_tmp);
@@ -16,6 +16,7 @@ static void init_mpi_cart_grid(){
 	MPI_Cart_coords(CART_COMM, RANK, 2, coords);
 	LOCAL_X_COORD = coords[0];
 	LOCAL_Y_COORD = coords[1];
+	printf("Rank %d: x = %d, y = %d\n", RANK, LOCAL_X_COORD, LOCAL_Y_COORD);
 }
 
 static void init(int argc, char *argv[]){
@@ -79,7 +80,8 @@ static void do_iteration(){
 		col_start = 1;
 		col_end = LOCAL_NCOLS - 2;
 	} else { // not at either x edge
-		// TODO:
+		col_start = 1;
+		col_end = LOCAL_NCOLS - 1;
 	}
 	int i, n;
 	for(i = 2; i < LOCAL_NROWS - 2; i++){
@@ -95,8 +97,8 @@ static void do_iteration(){
 
 int main(int argc, char *argv[]){
 	init(argc, argv);
-	int i;
 	//print_all_grids();
+	int i;
 	for(i = 0; i < 100; i++){
 		exchange();
 		do_iteration();
