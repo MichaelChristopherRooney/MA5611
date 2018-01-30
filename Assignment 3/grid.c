@@ -34,7 +34,7 @@ static void create_grid(){
 		grid[i] = &(temp[LOCAL_NCOLS * i]);
 	}
 	prev_grid = calloc(LOCAL_NROWS, sizeof(double *));
-	temp = calloc(NCOLS * LOCAL_NROWS, sizeof(double));
+	temp = calloc(LOCAL_NCOLS * LOCAL_NROWS, sizeof(double));
 	for(i = 0; i < LOCAL_NROWS; i++){
 		prev_grid[i] = &(temp[LOCAL_NCOLS * i]);
 	}
@@ -54,7 +54,6 @@ static void create_grid(){
 #define RIGHT_VALUE 25
 #define TOP_VALUE 100
 #define BOTTOM_VALUE 50
-
 
 void init_grid(){
 	create_grid();

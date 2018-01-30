@@ -111,15 +111,20 @@ static void exchange(){
 
 // TODO: multiple y nodes but only one x node
 static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *row_end){
-	if(LOCAL_X_COORD == 0){ // leftmost in x dim
+	if(MPI_CART_DIMS[X_INDEX] > 1){
+		if(LOCAL_X_COORD == 0){ // leftmost in x dim
+			*col_start = 2;
+			*col_end = LOCAL_NCOLS - 1;
+		} else if(LOCAL_X_COORD == MPI_CART_DIMS[X_INDEX] - 1){ // rightmost in x dim
+			*col_start = 1;
+			*col_end = LOCAL_NCOLS - 2;
+		} else { // not at either x edge
+			*col_start = 1;
+			*col_end = LOCAL_NCOLS - 1;
+		}
+	} else {
 		*col_start = 2;
-		*col_end = LOCAL_NCOLS - 1;
-	} else if(LOCAL_X_COORD == MPI_CART_DIMS[X_INDEX] - 1){ // rightmost in x dim
-		*col_start = 1;
 		*col_end = LOCAL_NCOLS - 2;
-	} else { // not at either x edge
-		*col_start = 1;
-		*col_end = LOCAL_NCOLS - 1;
 	}
 	if(MPI_CART_DIMS[Y_INDEX] > 1){
 		if(LOCAL_Y_COORD == 0){ // topmost in y dim
@@ -155,7 +160,6 @@ static void do_iteration(){
 
 int main(int argc, char *argv[]){
 	init(argc, argv);
-	//print_all_grids();
 	int i;
 	for(i = 0; i < 100; i++){
 		exchange();
