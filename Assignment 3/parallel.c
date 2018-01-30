@@ -1,8 +1,8 @@
 #include "common.h"
 
 static void init_mpi_cart_grid(){
-	NCOLS = 12;
-	NROWS = 12;
+	NCOLS = 9;
+	NROWS = 9;
 	int dims_tmp[2] = { 0, 0 };
 	int pbc[2] = { 0, 0 };
 	MPI_Dims_create(NUM_NODES, 2, dims_tmp);
@@ -109,6 +109,7 @@ static void exchange(){
 	MPI_Type_free(&col_vec);
 }
 
+// TODO: multiple y nodes but only one x node
 static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *row_end){
 	if(LOCAL_X_COORD == 0){ // leftmost in x dim
 		*col_start = 2;
@@ -120,16 +121,22 @@ static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *r
 		*col_start = 1;
 		*col_end = LOCAL_NCOLS - 1;
 	}
-	if(LOCAL_Y_COORD == 0){ // topmost in y dim
+	if(MPI_CART_DIMS[Y_INDEX] > 1){
+		if(LOCAL_Y_COORD == 0){ // topmost in y dim
+			*row_start = 2;
+			*row_end = LOCAL_NROWS - 1;
+		} else if(LOCAL_Y_COORD == MPI_CART_DIMS[Y_INDEX] - 1){ // bottommost in y dim
+			*row_start = 1;
+			*row_end = LOCAL_NROWS - 2;
+		} else { // not at either y edge
+			*row_start = 1;
+			*row_start = LOCAL_NROWS - 1;
+		}
+	} else {
 		*row_start = 2;
-		*row_end = LOCAL_NROWS - 1;
-	} else if(LOCAL_Y_COORD == MPI_CART_DIMS[Y_INDEX] - 1){ // bottommost in y dim
-		*row_start = 1;
 		*row_end = LOCAL_NROWS - 2;
-	} else { // not at either y edge
-		*row_start = 1;
-		*row_start = LOCAL_NROWS - 1;
 	}
+
 }
 
 static void do_iteration(){

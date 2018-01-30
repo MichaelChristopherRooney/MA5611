@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static const int NCOLS = 12;
-static const int NROWS = 12;
+static const int NCOLS = 9;
+static const int NROWS = 9;
 
 static double **grid;
 static double **prev_grid;
