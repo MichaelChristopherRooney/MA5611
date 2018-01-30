@@ -1,8 +1,8 @@
 #include "common.h"
 
 static void init_mpi_cart_grid(){
-	NCOLS = 9;
-	NROWS = 9;
+	NCOLS = 32;
+	NROWS = 32;
 	int dims_tmp[2] = { 0, 0 };
 	int pbc[2] = { 0, 0 };
 	MPI_Dims_create(NUM_NODES, 2, dims_tmp);
@@ -135,12 +135,13 @@ static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *r
 			*row_end = LOCAL_NROWS - 2;
 		} else { // not at either y edge
 			*row_start = 1;
-			*row_start = LOCAL_NROWS - 1;
+			*row_end = LOCAL_NROWS - 1;
 		}
 	} else {
 		*row_start = 2;
 		*row_end = LOCAL_NROWS - 2;
 	}
+
 
 }
 

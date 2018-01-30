@@ -39,7 +39,7 @@ static void create_grid(){
 		prev_grid[i] = &(temp[LOCAL_NCOLS * i]);
 	}
 	// For debug to see where things are being transfered
-	int count = 100;
+	int count = 10 * RANK;
 	int n;
 	for(i = 1; i < LOCAL_NROWS - 1; i++){
 		for(n = 1; n < LOCAL_NCOLS - 1; n++){
