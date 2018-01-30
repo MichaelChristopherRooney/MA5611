@@ -1,11 +1,12 @@
 #include "common.h"
 
-// Note: doesn't print extra space used for receiving from other nodes
 static void print_local_grid(){
 	printf("=======================================\n");
+	printf("Rank %d at x = %d and y = %d\n", RANK, LOCAL_X_COORD, LOCAL_Y_COORD);
 	int i, n;
-	for(i = 1; i < LOCAL_NROWS - 1; i++){
-		for(n = 1; n < LOCAL_NCOLS - 1; n++){
+	int x = 1; // set to 1 to avoid printing recv buffers
+	for(i = x; i < LOCAL_NROWS - x; i++){
+		for(n = x; n < LOCAL_NCOLS - x; n++){
 			//printf("%d, %d\n", i, n);
 			printf("%f, ", grid[i][n]);
 		}
@@ -38,7 +39,7 @@ static void create_grid(){
 		prev_grid[i] = &(temp[LOCAL_NCOLS * i]);
 	}
 	// For debug to see where things are being transfered
-	int count = 11;
+	int count = 100;
 	int n;
 	for(i = 1; i < LOCAL_NROWS - 1; i++){
 		for(n = 1; n < LOCAL_NCOLS - 1; n++){
@@ -53,6 +54,7 @@ static void create_grid(){
 #define RIGHT_VALUE 25
 #define TOP_VALUE 100
 #define BOTTOM_VALUE 50
+
 
 void init_grid(){
 	create_grid();
