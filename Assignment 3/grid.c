@@ -55,6 +55,7 @@ void print_final_grid(){
 		printf("\n");
 	}
 }
+
 static double **create_grid(int nrow, int ncol){
 	double **temp1 = calloc(nrow, sizeof(double *));
 	double *temp2 = calloc(ncol * nrow, sizeof(double));
@@ -75,11 +76,10 @@ static void create_grids(){
 	}
 }
 
-// TODO change these back when done debugging
-#define LEFT_VALUE 75
-#define RIGHT_VALUE 25
-#define TOP_VALUE 100
-#define BOTTOM_VALUE 50
+#define LEFT_VALUE 75.0
+#define RIGHT_VALUE 25.0
+#define TOP_VALUE 100.0
+#define BOTTOM_VALUE 50.0
 
 void init_grid(){
 	create_grids();

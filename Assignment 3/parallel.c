@@ -42,8 +42,9 @@ static void send_and_recv_left_col(MPI_Datatype col_vec){
 	int left_coords[2] = { LOCAL_X_COORD - 1, LOCAL_Y_COORD };
 	MPI_Cart_rank(CART_COMM, left_coords, &left_rank);
 	MPI_Request req;
+	MPI_Status status;
 	MPI_Isend(&grid[1][1], 1, col_vec, left_rank, 0, CART_COMM, &req);
-	MPI_Irecv(&grid[1][0], 1, col_vec, left_rank, MPI_ANY_TAG, CART_COMM, &req);
+	MPI_Recv(&grid[1][0], 1, col_vec, left_rank, MPI_ANY_TAG, CART_COMM, &status);
 }
 
 static void send_and_recv_right_col(MPI_Datatype col_vec){
@@ -51,8 +52,9 @@ static void send_and_recv_right_col(MPI_Datatype col_vec){
 	int right_coords[2] = { LOCAL_X_COORD + 1, LOCAL_Y_COORD };
 	MPI_Cart_rank(CART_COMM, right_coords, &right_rank);
 	MPI_Request req;
+	MPI_Status status;
 	MPI_Isend(&grid[1][LOCAL_NCOLS - 2], 1, col_vec, right_rank, 0, CART_COMM, &req);
-	MPI_Irecv(&grid[1][LOCAL_NCOLS-1], 1, col_vec, right_rank, MPI_ANY_TAG, CART_COMM, &req);
+	MPI_Recv(&grid[1][LOCAL_NCOLS-1], 1, col_vec, right_rank, MPI_ANY_TAG, CART_COMM, &status);
 }
 
 static void send_and_recv_top_row(){
@@ -60,8 +62,9 @@ static void send_and_recv_top_row(){
 	int top_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD - 1 };
 	MPI_Cart_rank(CART_COMM, top_coords, &top_rank);
 	MPI_Request req;
+	MPI_Status status;
 	MPI_Isend(&grid[1][1], LOCAL_NCOLS - 2, MPI_DOUBLE, top_rank, 0, CART_COMM, &req);
-	MPI_Irecv(&grid[0][1], LOCAL_NCOLS - 1, MPI_DOUBLE, top_rank, MPI_ANY_TAG, CART_COMM, &req);
+	MPI_Recv(&grid[0][1], LOCAL_NCOLS - 1, MPI_DOUBLE, top_rank, MPI_ANY_TAG, CART_COMM, &status);
 }
 
 static void send_and_recv_bottom_row(){
@@ -69,8 +72,9 @@ static void send_and_recv_bottom_row(){
 	int bottom_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD + 1 };
 	MPI_Cart_rank(CART_COMM, bottom_coords, &bottom_rank);
 	MPI_Request req;
+	MPI_Status status;
 	MPI_Isend(&grid[LOCAL_NROWS - 2][1], LOCAL_NCOLS - 2, MPI_DOUBLE, bottom_rank, 0, CART_COMM, &req);
-	MPI_Irecv(&grid[LOCAL_NROWS - 1][1], LOCAL_NCOLS - 1, MPI_DOUBLE, bottom_rank, MPI_ANY_TAG, CART_COMM, &req);
+	MPI_Recv(&grid[LOCAL_NROWS - 1][1], LOCAL_NCOLS - 1, MPI_DOUBLE, bottom_rank, MPI_ANY_TAG, CART_COMM, &status);
 }
 
 static void exchange(){
@@ -86,7 +90,6 @@ static void exchange(){
 	if(LOCAL_X_COORD != MPI_CART_DIMS[X_INDEX] - 1){
 		send_and_recv_right_col(col_vec);
 	}
-	MPI_Barrier(CART_COMM);
 }
 
 static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *row_end){
@@ -189,16 +192,18 @@ static void cleanup(){
 int main(int argc, char *argv[]){
 	init(argc, argv);
 	int i;
-	for(i = 0; i < 100; i++){
+	for(i = 0; i < NUM_ITER; i++){
 		exchange();
 		do_iteration();
 	}
 	if(CART_RANK == 0){
 		receive_final_results();
-		print_final_grid();
+		//print_final_grid();
+		//compare();
 	} else {
 		send_final_results();
 	}
+	
 	cleanup();
 	MPI_Finalize();
 	return 0;

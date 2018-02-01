@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <mpi.h>
 
+#define NUM_ITER 100
+
 // The size of the overall grid.
 int NCOLS;
 int NROWS;
@@ -44,4 +46,5 @@ void print_recv_grid();
 double **final_grid;
 double **recv_grid;
 
+void compare();
 

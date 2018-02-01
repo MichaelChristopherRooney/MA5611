@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static const int NCOLS = 18;
-static const int NROWS = 18;
+static int NCOLS;
+static int NROWS;
 
 static double **grid;
 static double **prev_grid;
@@ -70,13 +70,15 @@ static void init_grid(){
 	}
 }
 
-int main(void){
+int main(int argc, char *argv[]){
+	NCOLS = atoi(argv[1]);
+	NROWS = atoi(argv[2]);
 	init_grid();
 	//print_grid();
 	int i;
 	for(i = 0; i < 100; i++){
 		do_iteration();
 	}
-	print_grid();
+	//print_grid();
 	return 0;
 }
