@@ -22,6 +22,7 @@ int LOCAL_Y_COORD;
 int NUM_NODES;
 
 int RANK;
+int CART_RANK;
 
 // The size of the grid that the individual node is dealing with.
 int LOCAL_NCOLS;
@@ -29,10 +30,18 @@ int LOCAL_NROWS;
 
 MPI_Comm CART_COMM;
 
+MPI_Datatype col_vec;
+
 // Grid functions and data
 double **grid;
 double **prev_grid;
-double **final_grid; // only used by rank 0
-double **recv_grid; // only used by rank 0
 void print_all_grids();
 void init_grid();
+void free_grid(double **grid);
+// The following should only be called by rank 0 in the cart topology
+void print_final_grid();
+void print_recv_grid();
+double **final_grid;
+double **recv_grid;
+
+

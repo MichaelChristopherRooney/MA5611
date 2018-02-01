@@ -12,10 +12,13 @@ static void init_mpi_cart_grid(){
 	LOCAL_NROWS = (NROWS / MPI_CART_DIMS[Y_INDEX]) + 2;
 	LOCAL_NCOLS = (NCOLS / MPI_CART_DIMS[X_INDEX]) + 2;
 	MPI_Cart_create(MPI_COMM_WORLD, 2, MPI_CART_DIMS, pbc, 0, &CART_COMM);
+	MPI_Comm_rank(MPI_COMM_WORLD, &CART_RANK);
 	int coords[2];
 	MPI_Cart_coords(CART_COMM, RANK, 2, coords);
 	LOCAL_X_COORD = coords[0];
 	LOCAL_Y_COORD = coords[1];
+	MPI_Type_vector(LOCAL_NROWS - 2, 1, LOCAL_NCOLS, MPI_DOUBLE, &col_vec);
+	MPI_Type_commit(&col_vec);
 }
 
 static void init(int argc, char *argv[]){
@@ -27,73 +30,42 @@ static void init(int argc, char *argv[]){
 }
 
 static void send_and_recv_left_col(MPI_Datatype col_vec){
-	// Async send
+	int left_rank;
+	int left_coords[2] = { LOCAL_X_COORD - 1, LOCAL_Y_COORD };
+	MPI_Cart_rank(CART_COMM, left_coords, &left_rank);
 	MPI_Request req;
-	int dest_rank;
-	int dest_coords[2] = { LOCAL_X_COORD - 1, LOCAL_Y_COORD };
-	MPI_Cart_rank(CART_COMM, dest_coords, &dest_rank);
-	MPI_Isend(&grid[1][1], 1, col_vec, dest_rank, 0, CART_COMM, &req);
-	// Then recv
-	MPI_Status status;
-	int source_rank;
-	int source_coords[2] = { LOCAL_X_COORD - 1, LOCAL_Y_COORD };
-	MPI_Cart_rank(CART_COMM, source_coords, &source_rank);
-	MPI_Recv(&grid[1][0], 1, col_vec, source_rank, MPI_ANY_TAG, CART_COMM, &status);
+	MPI_Isend(&grid[1][1], 1, col_vec, left_rank, 0, CART_COMM, &req);
+	MPI_Irecv(&grid[1][0], 1, col_vec, left_rank, MPI_ANY_TAG, CART_COMM, &req);
 }
 
 static void send_and_recv_right_col(MPI_Datatype col_vec){
-	// Async send
+	int right_rank;
+	int right_coords[2] = { LOCAL_X_COORD + 1, LOCAL_Y_COORD };
+	MPI_Cart_rank(CART_COMM, right_coords, &right_rank);
 	MPI_Request req;
-	int dest_rank;
-	int dest_coords[2] = { LOCAL_X_COORD + 1, LOCAL_Y_COORD };
-	MPI_Cart_rank(CART_COMM, dest_coords, &dest_rank);
-	MPI_Isend(&grid[1][LOCAL_NCOLS - 2], 1, col_vec, dest_rank, 0, CART_COMM, &req);
-	// Then recv
-	MPI_Status status;
-	int source_rank;
-	int source_coords[2] = { LOCAL_X_COORD + 1, LOCAL_Y_COORD };
-	MPI_Cart_rank(CART_COMM, source_coords, &source_rank);
-	MPI_Recv(&grid[1][LOCAL_NCOLS-1], 1, col_vec, source_rank, MPI_ANY_TAG, CART_COMM, &status);
+	MPI_Isend(&grid[1][LOCAL_NCOLS - 2], 1, col_vec, right_rank, 0, CART_COMM, &req);
+	MPI_Irecv(&grid[1][LOCAL_NCOLS-1], 1, col_vec, right_rank, MPI_ANY_TAG, CART_COMM, &req);
 }
 
 static void send_and_recv_top_row(){
-	// Async send
+	int top_rank;
+	int top_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD - 1 };
+	MPI_Cart_rank(CART_COMM, top_coords, &top_rank);
 	MPI_Request req;
-	int dest_rank;
-	int dest_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD - 1 };
-	MPI_Cart_rank(CART_COMM, dest_coords, &dest_rank);
-	MPI_Isend(&grid[1][1], LOCAL_NCOLS - 2, MPI_DOUBLE, dest_rank, 0, CART_COMM, &req);
-	// Then recv
-	MPI_Status status;
-	int source_rank;
-	int source_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD - 1 };
-	MPI_Cart_rank(CART_COMM, source_coords, &source_rank);
-	MPI_Recv(&grid[0][1], LOCAL_NCOLS - 1, MPI_DOUBLE, source_rank, MPI_ANY_TAG, CART_COMM, &status);
+	MPI_Isend(&grid[1][1], LOCAL_NCOLS - 2, MPI_DOUBLE, top_rank, 0, CART_COMM, &req);
+	MPI_Irecv(&grid[0][1], LOCAL_NCOLS - 1, MPI_DOUBLE, top_rank, MPI_ANY_TAG, CART_COMM, &req);
 }
 
 static void send_and_recv_bottom_row(){
-	// Async send
+	int bottom_rank;
+	int bottom_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD + 1 };
+	MPI_Cart_rank(CART_COMM, bottom_coords, &bottom_rank);
 	MPI_Request req;
-	int dest_rank;
-	int dest_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD + 1 };
-	MPI_Cart_rank(CART_COMM, dest_coords, &dest_rank);
-	MPI_Isend(&grid[LOCAL_NROWS - 2][1], LOCAL_NCOLS - 2, MPI_DOUBLE, dest_rank, 0, CART_COMM, &req);
-	// Then recv
-	MPI_Status status;
-	int source_rank;
-	int source_coords[2] = { LOCAL_X_COORD, LOCAL_Y_COORD + 1 };
-	MPI_Cart_rank(CART_COMM, source_coords, &source_rank);
-	MPI_Recv(&grid[LOCAL_NROWS - 1][1], LOCAL_NCOLS - 1, MPI_DOUBLE, source_rank, MPI_ANY_TAG, CART_COMM, &status);
+	MPI_Isend(&grid[LOCAL_NROWS - 2][1], LOCAL_NCOLS - 2, MPI_DOUBLE, bottom_rank, 0, CART_COMM, &req);
+	MPI_Irecv(&grid[LOCAL_NROWS - 1][1], LOCAL_NCOLS - 1, MPI_DOUBLE, bottom_rank, MPI_ANY_TAG, CART_COMM, &req);
 }
 
-// TODO: only create data type once at start
-// TODO: more send/recv pairs
-// TODO: break this up into smaller functions
-// TODO: need for separate dest/source coords?
 static void exchange(){
-	MPI_Datatype col_vec;
-	MPI_Type_vector(LOCAL_NROWS - 2, 1, LOCAL_NCOLS, MPI_DOUBLE, &col_vec);
-	MPI_Type_commit(&col_vec);
 	if(LOCAL_Y_COORD != 0){
 		send_and_recv_top_row();
 	}
@@ -106,10 +78,9 @@ static void exchange(){
 	if(LOCAL_X_COORD != MPI_CART_DIMS[X_INDEX] - 1){
 		send_and_recv_right_col(col_vec);
 	}
-	MPI_Type_free(&col_vec);
+	MPI_Barrier(CART_COMM);
 }
 
-// TODO: multiple y nodes but only one x node
 static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *row_end){
 	if(MPI_CART_DIMS[X_INDEX] > 1){
 		if(LOCAL_X_COORD == 0){ // leftmost in x dim
@@ -141,8 +112,6 @@ static void get_iter_limits(int *col_start, int *col_end, int *row_start, int *r
 		*row_start = 2;
 		*row_end = LOCAL_NROWS - 2;
 	}
-
-
 }
 
 static void do_iteration(){
@@ -157,33 +126,6 @@ static void do_iteration(){
 	double **temp = grid;
 	grid = prev_grid;
 	prev_grid = temp;
-}
-
-// For debugging
-void print_recv_grid(){
-	printf("=======================================\n");
-	int i, n;
-	int x = 0;
-	for(i = x; i < LOCAL_NROWS - x; i++){
-		for(n = x; n < LOCAL_NCOLS - x; n++){
-			//printf("%d, %d\n", i, n);
-			printf("%f, ", recv_grid[i][n]);
-		}
-		printf("\n");
-	}
-	printf("=======================================\n");
-}
-
-void print_final_grid(){
-	int i, n;
-	int x = 0;
-	for(i = x; i < NROWS - x; i++){
-		for(n = x; n < NCOLS - x; n++){
-			//printf("%d, %d\n", i, n);
-			printf("%f, ", final_grid[i][n]);
-		}
-		printf("\n");
-	}
 }
 
 // TODO: use memcpy
@@ -204,7 +146,7 @@ static void receive_final_results(){
 	int i;
 	for(i = 1; i < NUM_NODES; i++){
 		MPI_Status status;
-		MPI_Recv(&recv_grid[0][0], LOCAL_NROWS * LOCAL_NCOLS, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(&recv_grid[0][0], LOCAL_NROWS * LOCAL_NCOLS, MPI_DOUBLE, i, MPI_ANY_TAG, CART_COMM, &status);
 		int coords[2] = { 0, 0 };
 		MPI_Cart_coords(CART_COMM, i, 2, coords);
 		//printf("Rank 0 received from %d, with x = %d and y = %d\n", i, coords[0], coords[1]);
@@ -218,11 +160,21 @@ static void receive_final_results(){
 static void send_final_results(){
 	int i;
 	for(i = 1; i < NUM_NODES; i++){
-		if(RANK == i){
-			//printf("Rank %d sending to 0\n", i);
-			MPI_Send(&grid[0][0], LOCAL_NROWS * LOCAL_NCOLS, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+		if(CART_RANK == i){
+			MPI_Send(&grid[0][0], LOCAL_NROWS * LOCAL_NCOLS, MPI_DOUBLE, 0, 0, CART_COMM);
 		}
 		MPI_Barrier(MPI_COMM_WORLD);
+	}
+}
+
+
+static void cleanup(){
+	MPI_Type_free(&col_vec);
+	free_grid(grid);
+	free_grid(prev_grid);
+	if(CART_RANK == 0){
+		free_grid(recv_grid);
+		free_grid(final_grid);
 	}
 }
 
@@ -234,12 +186,13 @@ int main(int argc, char *argv[]){
 		do_iteration();
 	}
 	//print_all_grids();
-	if(RANK == 0){
+	if(CART_RANK == 0){
 		receive_final_results();
 		print_final_grid();
 	} else {
 		send_final_results();
 	}
+	cleanup();
 	MPI_Finalize();
 	return 0;
 }
