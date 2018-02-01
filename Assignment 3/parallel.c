@@ -1,9 +1,9 @@
 #include "common.h"
 
 static void init_mpi_cart_grid(){
-	NCOLS = 32;
-	NROWS = 32;
-	int dims_tmp[2] = { 0, 0 };
+	NCOLS = 18;
+	NROWS = 18;
+	int dims_tmp[2] = { 3, 3 };
 	int pbc[2] = { 0, 0 };
 	MPI_Dims_create(NUM_NODES, 2, dims_tmp);
 	MPI_CART_DIMS[X_INDEX] = dims_tmp[X_INDEX];
@@ -159,6 +159,73 @@ static void do_iteration(){
 	prev_grid = temp;
 }
 
+// For debugging
+void print_recv_grid(){
+	printf("=======================================\n");
+	int i, n;
+	int x = 0;
+	for(i = x; i < LOCAL_NROWS - x; i++){
+		for(n = x; n < LOCAL_NCOLS - x; n++){
+			//printf("%d, %d\n", i, n);
+			printf("%f, ", recv_grid[i][n]);
+		}
+		printf("\n");
+	}
+	printf("=======================================\n");
+}
+
+void print_final_grid(){
+	int i, n;
+	int x = 0;
+	for(i = x; i < NROWS - x; i++){
+		for(n = x; n < NCOLS - x; n++){
+			//printf("%d, %d\n", i, n);
+			printf("%f, ", final_grid[i][n]);
+		}
+		printf("\n");
+	}
+}
+
+// TODO: use memcpy
+static void insert_final_result(double **buf, int x, int y){
+	int row_start = (LOCAL_NROWS - 2) * y;
+	int col_start = (LOCAL_NCOLS - 2) * x;
+	int i, n;
+	for(i = 0; i < (LOCAL_NROWS - 2); i++){
+		for(n = 0; n < (LOCAL_NCOLS - 2); n++){
+			final_grid[i + row_start][n + col_start] = buf[i + 1][n + 1];
+		}
+	}
+}
+
+// Only rank 0 should ever be here
+static void receive_final_results(){
+	insert_final_result(grid, 0, 0);
+	int i;
+	for(i = 1; i < NUM_NODES; i++){
+		MPI_Status status;
+		MPI_Recv(&recv_grid[0][0], LOCAL_NROWS * LOCAL_NCOLS, MPI_DOUBLE, i, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		int coords[2] = { 0, 0 };
+		MPI_Cart_coords(CART_COMM, i, 2, coords);
+		//printf("Rank 0 received from %d, with x = %d and y = %d\n", i, coords[0], coords[1]);
+		insert_final_result(recv_grid, coords[0], coords[1]);
+		//print_recv_grid();
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
+}
+
+// Everyone but rank 0 should be here
+static void send_final_results(){
+	int i;
+	for(i = 1; i < NUM_NODES; i++){
+		if(RANK == i){
+			//printf("Rank %d sending to 0\n", i);
+			MPI_Send(&grid[0][0], LOCAL_NROWS * LOCAL_NCOLS, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+		}
+		MPI_Barrier(MPI_COMM_WORLD);
+	}
+}
+
 int main(int argc, char *argv[]){
 	init(argc, argv);
 	int i;
@@ -166,7 +233,13 @@ int main(int argc, char *argv[]){
 		exchange();
 		do_iteration();
 	}
-	print_all_grids();
+	//print_all_grids();
+	if(RANK == 0){
+		receive_final_results();
+		print_final_grid();
+	} else {
+		send_final_results();
+	}
 	MPI_Finalize();
 	return 0;
 }

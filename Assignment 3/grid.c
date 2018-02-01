@@ -26,6 +26,7 @@ void print_all_grids(){
 	}
 }
 
+// TODO: move some of this code into other functions
 static void create_grid(){
 	grid = calloc(LOCAL_NROWS, sizeof(double *));
 	double *temp = calloc(LOCAL_NCOLS * LOCAL_NROWS, sizeof(double));
@@ -45,6 +46,18 @@ static void create_grid(){
 		for(n = 1; n < LOCAL_NCOLS - 1; n++){
 			//grid[i][n] = count;
 			count++;
+		}
+	}
+	if(RANK == 0){
+		final_grid = calloc(NROWS, sizeof(double *));
+		temp = calloc(NCOLS * NROWS, sizeof(double));
+		for(i = 0; i < NROWS; i++){
+			final_grid[i] = &(temp[NCOLS * i]);
+		}
+		recv_grid = calloc(LOCAL_NROWS, sizeof(double *));
+		temp = calloc(LOCAL_NCOLS * LOCAL_NROWS, sizeof(double));
+		for(i = 0; i < LOCAL_NROWS; i++){
+			recv_grid[i] = &(temp[LOCAL_NCOLS * i]);
 		}
 	}
 }

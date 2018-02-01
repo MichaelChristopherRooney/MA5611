@@ -1,14 +1,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-static const int NCOLS = 32;
-static const int NROWS = 32;
+static const int NCOLS = 18;
+static const int NROWS = 18;
 
 static double **grid;
 static double **prev_grid;
 
 static void print_grid(){
-	printf("=======================================\n");
 	int i, n;
 	for(i = 0; i < NROWS; i++){
 		for(n = 0; n < NCOLS; n++){
@@ -16,7 +15,6 @@ static void print_grid(){
 		}
 		printf("\n");
 	}
-	printf("=======================================\n");
 }
 
 static void create_grid(){

@@ -32,5 +32,7 @@ MPI_Comm CART_COMM;
 // Grid functions and data
 double **grid;
 double **prev_grid;
+double **final_grid; // only used by rank 0
+double **recv_grid; // only used by rank 0
 void print_all_grids();
 void init_grid();
