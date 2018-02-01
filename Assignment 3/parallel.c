@@ -1,31 +1,39 @@
 #include "common.h"
 
-static void init_mpi_cart_grid(){
-	NCOLS = 18;
-	NROWS = 18;
-	int dims_tmp[2] = { 3, 3 };
+// Note: the x/y dimension value will be overwritten here if 0 was passed as an arg
+static void create_topology(){
+	MPI_Dims_create(NUM_NODES, 2, MPI_CART_DIMS);
 	int pbc[2] = { 0, 0 };
-	MPI_Dims_create(NUM_NODES, 2, dims_tmp);
-	MPI_CART_DIMS[X_INDEX] = dims_tmp[X_INDEX];
-	MPI_CART_DIMS[Y_INDEX] = dims_tmp[Y_INDEX];
-	// TODO: ensure this works for different sizes
-	LOCAL_NROWS = (NROWS / MPI_CART_DIMS[Y_INDEX]) + 2;
-	LOCAL_NCOLS = (NCOLS / MPI_CART_DIMS[X_INDEX]) + 2;
 	MPI_Cart_create(MPI_COMM_WORLD, 2, MPI_CART_DIMS, pbc, 0, &CART_COMM);
+}
+
+static void init_local_topology_data(){
 	MPI_Comm_rank(MPI_COMM_WORLD, &CART_RANK);
 	int coords[2];
 	MPI_Cart_coords(CART_COMM, RANK, 2, coords);
 	LOCAL_X_COORD = coords[0];
 	LOCAL_Y_COORD = coords[1];
+	LOCAL_NROWS = (NROWS / MPI_CART_DIMS[Y_INDEX]) + 2;
+	LOCAL_NCOLS = (NCOLS / MPI_CART_DIMS[X_INDEX]) + 2;
 	MPI_Type_vector(LOCAL_NROWS - 2, 1, LOCAL_NCOLS, MPI_DOUBLE, &col_vec);
 	MPI_Type_commit(&col_vec);
+
+}
+
+static void read_args(int argc, char *argv[]){
+	NCOLS = atoi(argv[1]);
+	NROWS = atoi(argv[2]);
+	MPI_CART_DIMS[X_INDEX] = atoi(argv[3]);
+	MPI_CART_DIMS[Y_INDEX] = atoi(argv[4]);
 }
 
 static void init(int argc, char *argv[]){
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &RANK);
 	MPI_Comm_size(MPI_COMM_WORLD, &NUM_NODES);
-	init_mpi_cart_grid();
+	read_args(argc, argv);
+	create_topology();
+	init_local_topology_data();
 	init_grid();
 }
 
@@ -185,7 +193,6 @@ int main(int argc, char *argv[]){
 		exchange();
 		do_iteration();
 	}
-	//print_all_grids();
 	if(CART_RANK == 0){
 		receive_final_results();
 		print_final_grid();
