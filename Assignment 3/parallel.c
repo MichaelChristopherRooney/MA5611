@@ -139,15 +139,16 @@ static void do_iteration(){
 	prev_grid = temp;
 }
 
-// TODO: use memcpy
+// Copy a node's partial result grid into the final result grid.
+// Use the node's x and y coords to decide where the partial result grid should
+// be in the final result grid.
 static void insert_final_result(double **buf, int x, int y){
 	int row_start = (LOCAL_NROWS - 2) * y;
 	int col_start = (LOCAL_NCOLS - 2) * x;
 	int i, n;
 	for(i = 0; i < (LOCAL_NROWS - 2); i++){
-		for(n = 0; n < (LOCAL_NCOLS - 2); n++){
-			final_grid[i + row_start][n + col_start] = buf[i + 1][n + 1];
-		}
+		// copy the row
+		memcpy(&final_grid[i + row_start][col_start], &buf[i + 1][1], (LOCAL_NCOLS - 2) * sizeof(double));
 	}
 }
 
@@ -202,8 +203,7 @@ int main(int argc, char *argv[]){
 		//compare();
 	} else {
 		send_final_results();
-	}
-	
+	}	
 	cleanup();
 	MPI_Finalize();
 	return 0;

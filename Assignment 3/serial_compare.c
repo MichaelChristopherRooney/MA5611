@@ -62,14 +62,20 @@ void compare(){
 	for(i = 0; i < NUM_ITER; i++){
 		do_serial_iteration();
 	}
+	int match = 1;
 	int n;
 	for(i = 0; i < NROWS; i++){
 		for(n = 0; n < NCOLS; n++){
 			if(final_grid[i][n] != serial_grid[i][n]){
+				match = 0;
 				printf("At row %d col %d:\t parallel got %f, serial got %f\n", i, n, final_grid[i][n], serial_grid[i][n]);
 			}
 		}
 	}
-	
+	if(match == 1){
+		printf("Parallel and serial grids match\n");
+	} else {
+		printf("Parallel and serial grids DO NOT match\n");
+	}
 }
 
