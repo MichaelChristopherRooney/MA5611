@@ -1,4 +1,4 @@
-OBJECTS = parallel.o grid.o serial_compare.o serial.o
+OBJECTS = parallel.o grid.o serial_compare.o serial.o communication.o
 CC = mpicc
 CFLAGS = -Wall -lm
 PARALLEL_EXEC_NAME = parallel
@@ -6,8 +6,8 @@ SERIAL_EXEC_NAME = serial
 
 all: parallel serial
 
-parallel: parallel.o grid.o serial_compare.o
-	$(CC) -o $(PARALLEL_EXEC_NAME) parallel.o grid.o serial_compare.o $(CFLAGS)
+parallel: parallel.o grid.o serial_compare.o communication.o
+	$(CC) -o $(PARALLEL_EXEC_NAME) parallel.o grid.o serial_compare.o communication.o $(CFLAGS)
 
 serial: serial.o
 	$(CC) -o $(SERIAL_EXEC_NAME) serial.o $(CFLAGS)
@@ -17,6 +17,9 @@ serial.o: serial.c common.h
 
 parallel.o: parallel.c common.h
 	$(CC) -c parallel.c $(CFLAGS)
+
+communication.o: communication.c common.h
+	$(CC) -c communication.c $(CFLAGS)
 
 grid.o: grid.c common.h
 	$(CC) -c grid.c $(CFLAGS)

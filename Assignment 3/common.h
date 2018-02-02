@@ -25,6 +25,7 @@ int LOCAL_Y_COORD;
 // Overall number of MPI nodes
 int NUM_NODES;
 
+// Rank in world comm and cartesian comm.
 int RANK;
 int CART_RANK;
 
@@ -35,6 +36,10 @@ int LOCAL_NROWS;
 MPI_Comm CART_COMM;
 
 MPI_Datatype col_vec;
+
+void exchange();
+void send_final_results();
+void receive_final_results();
 
 // Grid functions and data
 double **grid;

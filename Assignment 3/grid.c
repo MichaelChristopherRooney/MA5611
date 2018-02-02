@@ -1,6 +1,9 @@
 #include "common.h"
 
-// For debugging
+/* 
+
+Functions for debugging. Commented out so the compiler doesn't complain about unused functions.
+
 static void print_local_grid(){
 	printf("=======================================\n");
 	printf("Rank %d at x = %d and y = %d\n", RANK, LOCAL_X_COORD, LOCAL_Y_COORD);
@@ -16,7 +19,6 @@ static void print_local_grid(){
 	printf("=======================================\n");
 }
 
-// For debugging
 void print_all_grids(){
 	int i;
 	for(i = 0; i < NUM_NODES; i++){
@@ -28,7 +30,6 @@ void print_all_grids(){
 	}
 }
 
-// For debugging
 void print_recv_grid(){
 	printf("=======================================\n");
 	int i, n;
@@ -43,7 +44,6 @@ void print_recv_grid(){
 	printf("=======================================\n");
 }
 
-
 // Should only be called by rank 0 in the cart topology
 void print_final_grid(){
 	int i, n;
@@ -55,6 +55,7 @@ void print_final_grid(){
 		printf("\n");
 	}
 }
+*/
 
 static double **create_grid(int nrow, int ncol){
 	double **temp1 = calloc(nrow, sizeof(double *));
@@ -66,7 +67,6 @@ static double **create_grid(int nrow, int ncol){
 	return temp1;
 }
 
-// TODO: move some of this code into other functions
 static void create_grids(){
 	grid = create_grid(LOCAL_NROWS, LOCAL_NCOLS);
 	prev_grid = create_grid(LOCAL_NROWS, LOCAL_NCOLS);
@@ -118,5 +118,4 @@ void free_grid(double **grid){
 	free(grid[0]);
 	free(grid);
 }
-
 
