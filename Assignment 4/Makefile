@@ -1,4 +1,4 @@
-OBJECTS = serial-tree.o
+OBJECTS = serial.o tree.o
 CC = gcc
 CFLAGS = -Wall -lm
 PARALLEL_EXEC_NAME = parallel
