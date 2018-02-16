@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "tree.h"
 
 int main(void){
@@ -7,6 +9,11 @@ int main(void){
 	insert_data(tree, 1);
 	insert_data(tree, 7);
 	insert_data(tree, 6);
+	insert_data(tree, 8);
+	printf("Printing tree:\n");
+	print_tree(tree->root);
+	delete_data(tree, 7);
+	printf("Printing tree:\n");
 	print_tree(tree->root);
 	return 0;
 }

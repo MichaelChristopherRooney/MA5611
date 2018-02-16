@@ -14,3 +14,4 @@ struct binary_tree {
 struct binary_tree *init_tree();
 void insert_data(struct binary_tree *tree, int data);
 void print_tree(struct node *cur);
+void delete_data(struct binary_tree *tree, int data);
