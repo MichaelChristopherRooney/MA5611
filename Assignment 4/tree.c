@@ -121,31 +121,25 @@ void print_tree(struct node *cur){
 	}
 }
 
-static void calculate_depth(struct node *cur, int depth, int *min, int *max){
-	if(cur->left == NULL && cur->right == NULL){
-		if(depth > *max){
-			*max = depth;
-		}
-		if(*min == 0 || depth < *min){
-			*min = depth;
-		}
-		return;
+int find_height_recursive(struct node *cur){
+	if(cur == NULL){
+		return 0;
 	}
-	if(cur->left != NULL){
-		calculate_depth(cur->left, depth + 1, min, max);
-	}
-	if(cur->right != NULL){
-		calculate_depth(cur->right, depth + 1, min, max);
+	int left_depth = find_height_recursive(cur->left);
+	int right_depth = find_height_recursive(cur->right);
+	if(left_depth > right_depth){
+		return 1 + left_depth;
+	} else {
+		return 1 + right_depth;
 	}
 }
 
 int is_tree_balanced(struct binary_tree *tree){
-	int min = 0;
-	int max = 0;
-	calculate_depth(tree->root, 0, &min, &max);
-	printf("Min: %d\n", min);
-	printf("Max: %d\n", max);
-	if(max - min > 1){
+	int left_depth = find_height_recursive(tree->root->left);
+	int right_depth = find_height_recursive(tree->root->right);
+	printf("Left depth: %d\n", left_depth);
+	printf("Right depth: %d\n", right_depth);
+	if(abs(right_depth - left_depth) > 1){
 		return 0;
 	}
 	return 1;
@@ -168,6 +162,26 @@ static int insert_node_key_recursive(int *keys, int index, struct node *cur){
 	return index;
 }
 
+static void insert_keys_balanced(struct binary_tree *balanced, int size, int *keys){
+	int halfway = size / 2;
+	if(size % 2 == 0){
+		insert_key(balanced, keys[halfway]);
+		int i;
+		for(i = 1; i < halfway; i++){
+			insert_key(balanced, keys[halfway + i]);
+			insert_key(balanced, keys[halfway - i]);
+		}
+		insert_key(balanced, keys[0]);
+	} else {
+		insert_key(balanced, keys[halfway]);
+		int i;
+		for(i = 1; i <= halfway; i++){
+			insert_key(balanced, keys[halfway + i]);
+			insert_key(balanced, keys[halfway - i]);
+		}
+	}
+}
+
 // First gets all keys into a sorted array.
 // Then it inserts these keys into a new tree, starting from the middle and 
 // going out towards the start and end of the array.
@@ -176,16 +190,7 @@ struct binary_tree *balance_tree(struct binary_tree *tree){
 	int *keys = calloc(tree->total_size, sizeof(int));
 	insert_node_key_recursive(keys, 0, tree->root);
 	struct binary_tree *balanced = init_tree();
-	int halfway = tree->total_size / 2;
-	insert_key(balanced, keys[halfway]);
-	int i;
-	for(i = 1; i < halfway; i++){
-		insert_key(balanced, keys[halfway + i]);
-		insert_key(balanced, keys[halfway - i]);
-	}
-	if(halfway * 2 < tree->total_size){ // when total size is an odd number
-		insert_key(balanced, keys[tree->total_size]);
-	}
+	insert_keys_balanced(balanced, tree->total_size, keys);
 	free(keys);
 	free_tree(tree);
 	return balanced;
