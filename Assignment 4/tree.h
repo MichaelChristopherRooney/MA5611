@@ -16,4 +16,4 @@ void insert_key(struct binary_tree *tree, int key);
 void print_tree(struct node *cur);
 void delete_key(struct binary_tree *tree, int key);
 int is_tree_balanced(struct binary_tree *tree);
-
+struct binary_tree *balance_tree(struct binary_tree *tree);

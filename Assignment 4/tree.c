@@ -77,12 +77,12 @@ void delete_key(struct binary_tree *tree, int key){
 }
 
 void insert_key(struct binary_tree *tree, int key){
+	tree->total_size++;
 	if(tree->root == NULL){
 		tree->root = calloc(1, sizeof(struct node));
 		tree->root->key = key;
 		return;
 	}
-	tree->total_size++;
 	struct node *cur = tree->root;
 	while(1){
 		if(key > cur->key){
@@ -150,5 +150,44 @@ int is_tree_balanced(struct binary_tree *tree){
 	}
 	return 1;
 	
+}
+
+// We traverse the tree and each node puts its key into the correct location in
+// the passed array.
+// When finished the array will contain all keys in the tree and will be sorted.
+// Index should be 0 on the first call.
+static int insert_node_key_recursive(int *keys, int index, struct node *cur){
+	if(cur->left != NULL){
+		index = insert_node_key_recursive(keys, index, cur->left);
+	}
+	keys[index] = cur->key;
+	index = index + 1;
+	if(cur->right != NULL){
+		index = insert_node_key_recursive(keys, index, cur->right);
+	}
+	return index;
+}
+
+// First gets all keys into a sorted array.
+// Then it inserts these keys into a new tree, starting from the middle and 
+// going out towards the start and end of the array.
+// This insertion order means the new tree will be balanced.
+struct binary_tree *balance_tree(struct binary_tree *tree){
+	int *keys = calloc(tree->total_size, sizeof(int));
+	insert_node_key_recursive(keys, 0, tree->root);
+	struct binary_tree *balanced = init_tree();
+	int halfway = tree->total_size / 2;
+	insert_key(balanced, keys[halfway]);
+	int i;
+	for(i = 1; i < halfway; i++){
+		insert_key(balanced, keys[halfway + i]);
+		insert_key(balanced, keys[halfway - i]);
+	}
+	if(halfway * 2 < tree->total_size){ // when total size is an odd number
+		insert_key(balanced, keys[tree->total_size]);
+	}
+	free(keys);
+	free_tree(tree);
+	return balanced;
 }
 
