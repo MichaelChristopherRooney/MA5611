@@ -8,22 +8,40 @@ struct binary_tree *init_tree(){
 	return b;
 }
 
-struct node *find_node(struct binary_tree *tree, int data){
+static void free_nodes_recursive(struct node *cur){
+	if(cur->left != NULL && cur->right != NULL){
+		free(cur);
+		return;
+	}
+	if(cur->left != NULL){
+		free_nodes_recursive(cur->left);
+	}
+	if(cur->right != NULL){
+		free_nodes_recursive(cur->right);
+	}
+}
+
+void free_tree(struct binary_tree *tree){
+	free_nodes_recursive(tree->root);
+	free(tree);
+}
+
+struct node *find_node(struct binary_tree *tree, int key){
 	struct node *cur = tree->root;
 	while(cur != NULL){
-		if(cur->data == data){
+		if(cur->key == key){
 			return cur;
-		} else if(data > cur->data){
+		} else if(key > cur->key){
 			cur = cur->right;
-		} else if(data < cur->data){
+		} else if(key < cur->key){
 			cur = cur ->left;
 		}
 	}
 	return NULL; // not found
 }
 
-void delete_data(struct binary_tree *tree, int data){
-	struct node *cur = find_node(tree, data);
+void delete_key(struct binary_tree *tree, int key){
+	struct node *cur = find_node(tree, key);
 	if(cur == NULL){
 		return;
 	}
@@ -54,23 +72,23 @@ void delete_data(struct binary_tree *tree, int data){
 		cur->right->parent = cur->left;
 		cur->left->right = cur->right;
 	}
-	// TODO: decrement totals, depths etc
+	tree->total_size--;
 	free(cur);
 }
 
-void insert_data(struct binary_tree *tree, int data){
+void insert_key(struct binary_tree *tree, int key){
 	if(tree->root == NULL){
 		tree->root = calloc(1, sizeof(struct node));
-		tree->root->data = data;
+		tree->root->key = key;
 		return;
 	}
 	tree->total_size++;
 	struct node *cur = tree->root;
 	while(1){
-		if(data > cur->data){
+		if(key > cur->key){
 			if(cur->right == NULL){
 				struct node *r = calloc(1, sizeof(struct node));
-				r->data = data;
+				r->key = key;
 				r->parent = cur;
 				cur->right = r;
 				return;
@@ -80,7 +98,7 @@ void insert_data(struct binary_tree *tree, int data){
 		} else {
 			if(cur->left == NULL){
 				struct node *l = calloc(1, sizeof(struct node));
-				l->data = data;
+				l->key = key;
 				l->parent = cur;
 				cur->left = l;
 				return;
@@ -97,7 +115,7 @@ void print_tree(struct node *cur){
 	if(cur->left != NULL){
 		print_tree(cur->left);
 	}
-	printf("%d\n", cur->data);
+	printf("%d\n", cur->key);
 	if(cur->right != NULL){
 		print_tree(cur->right);
 	}
@@ -128,9 +146,9 @@ int is_tree_balanced(struct binary_tree *tree){
 	printf("Min: %d\n", min);
 	printf("Max: %d\n", max);
 	if(max - min > 1){
-		return 1;
+		return 0;
 	}
-	return 0;
+	return 1;
 	
 }
 
