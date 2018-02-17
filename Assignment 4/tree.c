@@ -64,6 +64,7 @@ void insert_data(struct binary_tree *tree, int data){
 		tree->root->data = data;
 		return;
 	}
+	tree->total_size++;
 	struct node *cur = tree->root;
 	while(1){
 		if(data > cur->data){
@@ -101,3 +102,35 @@ void print_tree(struct node *cur){
 		print_tree(cur->right);
 	}
 }
+
+static void calculate_depth(struct node *cur, int depth, int *min, int *max){
+	if(cur->left == NULL && cur->right == NULL){
+		if(depth > *max){
+			*max = depth;
+		}
+		if(*min == 0 || depth < *min){
+			*min = depth;
+		}
+		return;
+	}
+	if(cur->left != NULL){
+		calculate_depth(cur->left, depth + 1, min, max);
+	}
+	if(cur->right != NULL){
+		calculate_depth(cur->right, depth + 1, min, max);
+	}
+}
+
+int is_tree_balanced(struct binary_tree *tree){
+	int min = 0;
+	int max = 0;
+	calculate_depth(tree->root, 0, &min, &max);
+	printf("Min: %d\n", min);
+	printf("Max: %d\n", max);
+	if(max - min > 1){
+		return 1;
+	}
+	return 0;
+	
+}
+
