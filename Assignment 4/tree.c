@@ -162,6 +162,8 @@ static int insert_node_key_recursive(int *keys, int index, struct node *cur){
 	return index;
 }
 
+// Note that the loops start at i = 1 and access the keys at [halfway +/- i].
+// This allows keys to be inserted in an optimal order.
 static void insert_keys_balanced(struct binary_tree *balanced, int size, int *keys){
 	int halfway = size / 2;
 	if(size % 2 == 0){

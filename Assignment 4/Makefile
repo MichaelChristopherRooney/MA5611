@@ -1,10 +1,16 @@
-OBJECTS = serial.o tree.o
+OBJECTS = serial.o tree.o parallel.o
 CC = gcc
-CFLAGS = -Wall -lm
+CFLAGS = -Wall -lm -lpthread
 PARALLEL_EXEC_NAME = parallel
 SERIAL_EXEC_NAME = serial
 
-all: serial-tree
+all: serial-tree parallel-tree
+
+parallel-tree: parallel.o tree.o
+	$(CC) -o $(PARALLEL_EXEC_NAME) parallel.o tree.o $(CFLAGS)
+
+parallel.o: parallel.c tree.h
+	$(CC) -c parallel.c $(CFLAGS)
 
 serial-tree: serial.o tree.o
 	$(CC) -o $(SERIAL_EXEC_NAME) serial.o tree.o $(CFLAGS)
