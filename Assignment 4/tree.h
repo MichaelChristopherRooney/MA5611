@@ -13,7 +13,8 @@ struct binary_tree {
 struct binary_tree *init_tree();
 void free_tree(struct binary_tree *tree);
 void insert_key(struct binary_tree *tree, int key);
-void print_tree(struct node *cur);
+void print_tree(struct binary_tree *tree);
 void delete_key(struct binary_tree *tree, int key);
 int is_tree_balanced(struct binary_tree *tree);
 struct binary_tree *balance_tree(struct binary_tree *tree);
+int get_random_key_from_tree(struct binary_tree *tree);

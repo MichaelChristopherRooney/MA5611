@@ -20,7 +20,7 @@ static void *balancer(void *arg){
 		printf("Balancer trying to aquire mutex\n");
 		pthread_mutex_lock(&mutex);
 		printf("Balancer aquired mutex\n");
-		sleep(3);
+		//sleep(3);
 		printf("Balancer releasing mutex\n");
 		pthread_mutex_unlock(&mutex);
 	}
@@ -34,13 +34,24 @@ static void *deleter(void *arg){
 		printf("Deleter trying to aquire mutex\n");
 		pthread_mutex_lock(&mutex);
 		printf("Deleter aquired mutex\n");
-		sleep(3);
+		if(tree->root == NULL){
+			printf("Tree is empty, nothing to delete\n");
+		} else {
+			int key = get_random_key_from_tree(tree);
+			printf("Got random key %d\n", key);
+			delete_key(tree, key);
+			printf("Deleted %d from tree\n", key);
+			print_tree(tree);
+		}
 		printf("Deleter releasing mutex\n");
 		pthread_mutex_unlock(&mutex);
 	}
 	return NULL;
 }
 
+// Picks a random number using rand()'s full range
+// This makes it unlikely there will ever be a collision.
+// If there is a collision the tree code will fail to work though.
 static void *inserter(void *arg){
 	printf("Inserter\n");
 	while(1){
@@ -48,7 +59,10 @@ static void *inserter(void *arg){
 		printf("Inserter trying to aquire mutex\n");
 		pthread_mutex_lock(&mutex);
 		printf("Inserter aquired mutex\n");
-		sleep(3);
+		int key = rand();
+		insert_key(tree, key);
+		printf("Inserted %d\n", key);
+		print_tree(tree);
 		printf("Inserter releasing mutex\n");
 		pthread_mutex_unlock(&mutex);
 	}

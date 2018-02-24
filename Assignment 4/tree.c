@@ -22,7 +22,9 @@ static void free_nodes_recursive(struct node *cur){
 }
 
 void free_tree(struct binary_tree *tree){
-	free_nodes_recursive(tree->root);
+	if(tree->root != NULL){
+		free_nodes_recursive(tree->root);
+	}
 	free(tree);
 }
 
@@ -40,11 +42,21 @@ struct node *find_node(struct binary_tree *tree, int key){
 	return NULL; // not found
 }
 
-void delete_key(struct binary_tree *tree, int key){
-	struct node *cur = find_node(tree, key);
-	if(cur == NULL){
-		return;
+static void delete_root_node(struct binary_tree *tree, struct node *cur){
+	if(cur->left == NULL && cur->right == NULL){ // root is only node
+		tree->root = NULL;
+	} else if(cur->left != NULL && cur->right == NULL){ // root only has left child node
+		tree->root = cur->left;
+		cur->left->parent = NULL;
+	} else if(cur->left == NULL && cur->right != NULL){ // root only has right child node
+		tree->root = cur->right;
+		cur->right->parent = NULL;
+	} else { // root has left and right child nodes
+		// TODO use replace node with minimum value on the right subtree
 	}
+}
+
+static void delete_non_root_node(struct node *cur){
 	if(cur->left == NULL && cur->right == NULL){ // is leaf - no child nodes
 		if(cur->parent->left == cur){
 			cur->parent->left = NULL;
@@ -63,14 +75,20 @@ void delete_key(struct binary_tree *tree, int key){
 		} else {
 			cur->parent->right = cur->right;
 		}
-	} else if(cur->left != NULL && cur->right != NULL){ // has both left and right child nodes
-		if(cur->parent->left == cur){
-			cur->parent->left = cur->left;
-		} else {
-			cur->parent->right = cur->left;
-		}
-		cur->right->parent = cur->left;
-		cur->left->right = cur->right;
+	} else { // has both left and right child nodes
+		// TODO use replace node with minimum value on the right subtree
+	}
+}
+
+void delete_key(struct binary_tree *tree, int key){
+	struct node *cur = find_node(tree, key);
+	if(cur == NULL){
+		return;
+	}
+	if(cur == tree->root){
+		delete_root_node(tree, cur);
+	} else {
+		delete_non_root_node(cur);
 	}
 	tree->total_size--;
 	free(cur);
@@ -109,16 +127,52 @@ void insert_key(struct binary_tree *tree, int key){
 	}
 }
 
+// Used for deletion in the parallel version.
+// Simply returns a random key from the tree to be deleted.
+int get_random_key_from_tree(struct binary_tree *tree){
+	struct node *cur = tree->root;
+	while(1){
+		int r = rand() % 3;
+		if(r == 0){
+			return cur->key;
+		}
+		if(cur->left != NULL && cur->right != NULL){
+			r = rand() % 2;
+			if(r == 0){
+				cur = cur->left;
+			} else {
+				cur = cur->right;
+			}
+		} else if(cur->left != NULL){
+			cur = cur->left;
+		} else if(cur->right != NULL){
+			cur = cur->right;
+		} else {
+			return cur->key;
+		}
+	}
+}
+
 // Prints tree left to right
 // Pass root node to print entire tree
-void print_tree(struct node *cur){
+static void print_tree_recursive(struct node *cur){
 	if(cur->left != NULL){
-		print_tree(cur->left);
+		print_tree_recursive(cur->left);
 	}
-	printf("%d\n", cur->key);
+	printf("%d, ", cur->key);
 	if(cur->right != NULL){
-		print_tree(cur->right);
+		print_tree_recursive(cur->right);
 	}
+}
+
+void print_tree(struct binary_tree *tree){
+	if(tree->root == NULL){
+		printf("Tree is empty\n");
+		return;
+	}
+	printf("Tree contains in order:\n");
+	print_tree_recursive(tree->root);
+	printf("\n");
 }
 
 int find_height_recursive(struct node *cur){
@@ -135,6 +189,9 @@ int find_height_recursive(struct node *cur){
 }
 
 int is_tree_balanced(struct binary_tree *tree){
+	if(tree->root == NULL){
+		return 1;
+	}
 	int left_depth = find_height_recursive(tree->root->left);
 	int right_depth = find_height_recursive(tree->root->right);
 	printf("Left depth: %d\n", left_depth);
