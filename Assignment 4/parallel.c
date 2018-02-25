@@ -21,7 +21,6 @@ const static int INSERT_MAX_SLEEP_TIME = 5;
 
 static void *balance(void *arg){
 	while(1){
-		// FIXME actually obey min and max times
 		sleep(rand() % (BALANCE_MAX_SLEEP_TIME + 1 - BALANCE_MIN_SLEEP_TIME) + BALANCE_MIN_SLEEP_TIME);
 		pthread_mutex_lock(&MUTEX);
 		if(is_tree_balanced(tree) == 0){
