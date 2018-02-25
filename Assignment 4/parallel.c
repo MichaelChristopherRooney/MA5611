@@ -12,8 +12,8 @@ static pthread_t INSERT_THREAD;
 
 static struct binary_tree *tree;
 
-const static int BALANCE_MIN_SLEEP_TIME = 15;
-const static int BALANCE_MAX_SLEEP_TIME = 30;
+const static int BALANCE_MIN_SLEEP_TIME = 10;
+const static int BALANCE_MAX_SLEEP_TIME = 20;
 const static int DELETE_MIN_SLEEP_TIME = 3;
 const static int DELETE_MAX_SLEEP_TIME = 10;
 const static int INSERT_MIN_SLEEP_TIME = 1;
@@ -22,10 +22,10 @@ const static int INSERT_MAX_SLEEP_TIME = 5;
 static void *balance(void *arg){
 	while(1){
 		// FIXME actually obey min and max times
-		sleep((rand() % BALANCE_MAX_SLEEP_TIME) + BALANCE_MIN_SLEEP_TIME);
+		sleep(rand() % (BALANCE_MAX_SLEEP_TIME + 1 - BALANCE_MIN_SLEEP_TIME) + BALANCE_MIN_SLEEP_TIME);
 		pthread_mutex_lock(&MUTEX);
 		if(is_tree_balanced(tree) == 0){
-			printf("Tree needs to be balanced\n");
+			printf("Tree is not balanced, balancing now...\n");
 			tree = balance_tree(tree);
 			print_tree(tree);
 		} else {
@@ -38,7 +38,7 @@ static void *balance(void *arg){
 
 static void *delete(void *arg){
 	while(1){
-		sleep((rand() % DELETE_MAX_SLEEP_TIME) + DELETE_MIN_SLEEP_TIME);
+		sleep(rand() % (DELETE_MAX_SLEEP_TIME + 1 - DELETE_MIN_SLEEP_TIME) + DELETE_MIN_SLEEP_TIME);
 		pthread_mutex_lock(&MUTEX);
 		if(tree->root == NULL){
 			printf("Tree is empty, nothing to delete\n");
@@ -59,7 +59,7 @@ static void *delete(void *arg){
 // If there is a collision the tree code will fail to work though.
 static void *inserte(void *arg){
 	while(1){
-		sleep((rand() % INSERT_MAX_SLEEP_TIME) + INSERT_MIN_SLEEP_TIME);
+		sleep(rand() % (INSERT_MAX_SLEEP_TIME + 1 - INSERT_MIN_SLEEP_TIME) + INSERT_MIN_SLEEP_TIME);
 		pthread_mutex_lock(&MUTEX);
 		int key = rand();
 		insert_key(tree, key);
