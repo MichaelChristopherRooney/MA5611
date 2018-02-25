@@ -4,6 +4,7 @@
 
 int main(void){
 	struct binary_tree *tree = init_tree();
+	/*
 	insert_key(tree, 100);
 	insert_key(tree, 50);
 	insert_key(tree, 200);
@@ -16,14 +17,15 @@ int main(void){
 	print_tree(tree);
 	delete_key(tree, 50);
 	print_tree(tree);
-	/* TODO get this working
+	*/
+	
 	insert_key(tree, 336465782);
 	insert_key(tree, 278722862);
 	insert_key(tree, 2145174067);
 	print_tree(tree);
 	delete_key(tree, 336465782);
 	print_tree(tree);
-	*/
+
 	/*
 	if(is_tree_balanced(tree) == 0){
 		tree = balance_tree(tree);

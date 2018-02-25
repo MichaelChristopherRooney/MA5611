@@ -5,35 +5,41 @@
 
 #include "tree.h"
 
-static pthread_mutex_t mutex;
-
-static pthread_t balancer_thread;
-static pthread_t deleter_thread;
-static pthread_t inserter_thread;
+static pthread_mutex_t MUTEX;
+static pthread_t BALANCE_THREAD;
+static pthread_t DELETE_THREAD;;
+static pthread_t INSERT_THREAD;
 
 static struct binary_tree *tree;
 
-static void *balancer(void *arg){
-	printf("Balanced\n");
+const static int BALANCE_MIN_SLEEP_TIME = 15;
+const static int BALANCE_MAX_SLEEP_TIME = 30;
+const static int DELETE_MIN_SLEEP_TIME = 3;
+const static int DELETE_MAX_SLEEP_TIME = 10;
+const static int INSERT_MIN_SLEEP_TIME = 1;
+const static int INSERT_MAX_SLEEP_TIME = 5;
+
+static void *balance(void *arg){
 	while(1){
-		sleep(rand() % 10);
-		printf("Balancer trying to aquire mutex\n");
-		pthread_mutex_lock(&mutex);
-		printf("Balancer aquired mutex\n");
-		//sleep(3);
-		printf("Balancer releasing mutex\n");
-		pthread_mutex_unlock(&mutex);
+		// FIXME actually obey min and max times
+		sleep((rand() % BALANCE_MAX_SLEEP_TIME) + BALANCE_MIN_SLEEP_TIME);
+		pthread_mutex_lock(&MUTEX);
+		if(is_tree_balanced(tree) == 0){
+			printf("Tree needs to be balanced\n");
+			tree = balance_tree(tree);
+			print_tree(tree);
+		} else {
+			printf("Tree does not need to be balanced\n");
+		}
+		pthread_mutex_unlock(&MUTEX);
 	}
 	return NULL;
 }
 
-static void *deleter(void *arg){
-	printf("Deleter\n");
+static void *delete(void *arg){
 	while(1){
-		sleep(rand() % 10);
-		printf("Deleter trying to aquire mutex\n");
-		pthread_mutex_lock(&mutex);
-		printf("Deleter aquired mutex\n");
+		sleep((rand() % DELETE_MAX_SLEEP_TIME) + DELETE_MIN_SLEEP_TIME);
+		pthread_mutex_lock(&MUTEX);
 		if(tree->root == NULL){
 			printf("Tree is empty, nothing to delete\n");
 		} else {
@@ -43,8 +49,7 @@ static void *deleter(void *arg){
 			printf("Deleted %d from tree\n", key);
 			print_tree(tree);
 		}
-		printf("Deleter releasing mutex\n");
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&MUTEX);
 	}
 	return NULL;
 }
@@ -52,28 +57,24 @@ static void *deleter(void *arg){
 // Picks a random number using rand()'s full range
 // This makes it unlikely there will ever be a collision.
 // If there is a collision the tree code will fail to work though.
-static void *inserter(void *arg){
-	printf("Inserter\n");
+static void *inserte(void *arg){
 	while(1){
-		sleep(rand() % 10);
-		printf("Inserter trying to aquire mutex\n");
-		pthread_mutex_lock(&mutex);
-		printf("Inserter aquired mutex\n");
+		sleep((rand() % INSERT_MAX_SLEEP_TIME) + INSERT_MIN_SLEEP_TIME);
+		pthread_mutex_lock(&MUTEX);
 		int key = rand();
 		insert_key(tree, key);
 		printf("Inserted %d\n", key);
 		print_tree(tree);
-		printf("Inserter releasing mutex\n");
-		pthread_mutex_unlock(&mutex);
+		pthread_mutex_unlock(&MUTEX);
 	}
 	return NULL;
 }
 
 int main(void){
 	tree = init_tree();
-	pthread_create(&balancer_thread, NULL, balancer, NULL);
-	pthread_create(&deleter_thread, NULL, deleter, NULL);
-	pthread_create(&inserter_thread, NULL, inserter, NULL);
+	pthread_create(&BALANCE_THREAD, NULL, balance, NULL);
+	pthread_create(&DELETE_THREAD, NULL, delete, NULL);
+	pthread_create(&INSERT_THREAD, NULL, inserte, NULL);
 	while(1){}
 	return 0;
 }

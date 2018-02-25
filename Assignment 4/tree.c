@@ -42,6 +42,15 @@ struct node *find_node(struct binary_tree *tree, int key){
 	return NULL; // not found
 }
 
+static struct node *find_minimum_in_subtree(struct node *cur){
+	while(1){
+		if(cur->left == NULL){
+			return cur;
+		}
+		cur = cur->left;
+	}
+}
+
 static void delete_root_node(struct binary_tree *tree, struct node *cur){
 	if(cur->left == NULL && cur->right == NULL){ // root is only node
 		tree->root = NULL;
@@ -52,11 +61,20 @@ static void delete_root_node(struct binary_tree *tree, struct node *cur){
 		tree->root = cur->right;
 		cur->right->parent = NULL;
 	} else { // root has left and right child nodes
-		// TODO use replace node with minimum value on the right subtree
+		// basically swapping the cur node with the minimum node in the subtree
+		// because of this we don't actually delete the cur node, but we do
+		// delete the minimum node.
+		struct node *min = find_minimum_in_subtree(tree->root->right);
+		int key = min->key;
+		delete_key(tree, key);
+		tree->root->key = key;
+		return; // return so the node isn't freed
 	}
+	tree->total_size--;
+	free(cur);
 }
 
-static void delete_non_root_node(struct node *cur){
+static void delete_non_root_node(struct binary_tree *tree, struct node *cur){
 	if(cur->left == NULL && cur->right == NULL){ // is leaf - no child nodes
 		if(cur->parent->left == cur){
 			cur->parent->left = NULL;
@@ -76,8 +94,17 @@ static void delete_non_root_node(struct node *cur){
 			cur->parent->right = cur->right;
 		}
 	} else { // has both left and right child nodes
-		// TODO use replace node with minimum value on the right subtree
+		// basically swapping the cur node with the minimum node in the subtree
+		// because of this we don't actually delete the cur node, but we do
+		// delete the minimum node.
+		struct node *min = find_minimum_in_subtree(cur->right);
+		int key = min->key;
+		delete_key(tree, key);
+		cur->key = key;
+		return; // return so the node isn't freed
 	}
+	tree->total_size--;
+	free(cur);
 }
 
 void delete_key(struct binary_tree *tree, int key){
@@ -88,10 +115,8 @@ void delete_key(struct binary_tree *tree, int key){
 	if(cur == tree->root){
 		delete_root_node(tree, cur);
 	} else {
-		delete_non_root_node(cur);
+		delete_non_root_node(tree, cur);
 	}
-	tree->total_size--;
-	free(cur);
 }
 
 void insert_key(struct binary_tree *tree, int key){
