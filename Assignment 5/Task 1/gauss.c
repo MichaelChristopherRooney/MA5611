@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #define MAX_VALUE 5
 #define MIN_VALUE 1
@@ -84,14 +86,36 @@ static void do_back_substituion(float **system, const int n){
 	}
 }
 
-// TODO: args
+static int parse_args(int argc, char *argv[]){
+	if(argc != 3){
+		printf("Please provide a value for n\n");
+		exit(1);
+	}
+	int c;
+	while((c = getopt(argc, argv, "n")) != -1){
+		switch(c){
+		case 'n':
+			return atoi(argv[optind]);
+		}
+	}
+	printf("Please provide a value for n\n");
+	exit(1);
+}
+
 // TODO: allow values to be zero
-int main(void){
-	int n = 3;
+int main(int argc, char *argv[]){
+	int n = parse_args(argc, argv);
 	float **system = create_random_system(n);
 	//print_system(system, n);
+	struct timeval start_time;
+	struct timeval end_time;
+	long long time_taken;
+	gettimeofday(&start_time, NULL);
 	do_gaussian_elimination(system, n);
 	do_back_substituion(system, n);
+	gettimeofday(&end_time, NULL);
+	time_taken = (end_time.tv_sec - start_time.tv_sec) * 1000000L + (end_time.tv_usec - start_time.tv_usec);
+	printf("Time taken: %lld microseconds.\n", time_taken);
 	print_system(system, n);
 	return 0;
 }
