@@ -11,7 +11,7 @@ char *sieve_with_opt_and_openmp(const int n){
 	memset(primes, 1, (n*sizeof(int)) + 1);
 	int lim = sqrt(n);
 	int i;
-	omp_set_num_threads(2);
+	omp_set_num_threads(4);
 	#pragma omp parallel for schedule(dynamic)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){

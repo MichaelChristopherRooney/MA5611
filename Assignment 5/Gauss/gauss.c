@@ -2,9 +2,40 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <omp.h>
 
 #define MAX_VALUE 5
 #define MIN_VALUE 1
+
+static float **copy_system(float **source, const int n){
+	float **copy = calloc(1, sizeof(float*) * n);
+	float *temp = calloc(1, sizeof(float) * n * (n+1));
+	int i;
+	for(i = 0; i < n; i++){
+		copy[i] = &(temp[i*(n+1)]);
+	}
+	int j;
+	for(i = 0; i < n; i++){
+		for(j = 0; j < n + 1; j++){
+			copy[i][j] = source[i][j];
+		}
+	}
+	return copy;
+}
+
+static void check_systems_equal(float **s1, float **s2, const int n){
+	float epsilon = 1E-6;
+	int i, j;
+	for(i = 0; i < n; i++){
+		for(j = 0; j < n + 1; j++){
+			if((s1[i][j] - s2[i][j]) > epsilon){
+				printf("Systems are not equal!\n");
+				exit(1);
+			}
+		}
+	}
+	printf("Systems are equal\n");
+}
 
 static void fill_with_values(float **system, const int n){
 	int i, j;
@@ -24,8 +55,9 @@ static float **create_random_system(const int n){
 	for(i = 0; i < n; i++){
 		system[i] = &(temp[i*(n+1)]);
 	}
-	//fill_with_values(system, n);
+	fill_with_values(system, n);
 	// Just an example for testing
+	/*
 	system[0][0] = 2.0;
 	system[0][1] = 1.0;
 	system[0][2] = -1.0;
@@ -38,51 +70,18 @@ static float **create_random_system(const int n){
 	system[2][1] = 1.0;
 	system[2][2] = 2.0;
 	system[2][3] = -3.0;
+	*/
 	return system;
 }
 
 static void print_system(float **system, const int n){
+	//return;
 	int i, j;
 	for(i = 0; i < n; i++){
 		for(j = 0; j < n + 1; j++){
 			printf("%f, ", system[i][j]);
 		}
 		printf("\n");
-	}
-}
-
-// row1 = (row2*ratio) + row1
-static void subtract_rows_with_ratio(float **system, float ratio, int row1, int row2, int n){
-	for(int col = 0; col < n + 1; col++){ // note n + 1
-		system[row1][col] = (system[row2][col] * ratio) + system[row1][col];
-	}
-}
-
-static void do_gaussian_elimination(float **system, const int n){
-	int row, col;
-	for(col = 0; col < n; col++){
-		for(row = col + 1; row < n; row++){
-			float ratio = (system[row][col] / system[col][col]) * -1.0;
-			subtract_rows_with_ratio(system, ratio, row, col, n);
-		}
-	}
-}
-
-static void do_back_substituion(float **system, const int n){
-	int row, col;
-	for(col = n - 1; col > 0; col--){
-		for(row = col - 1; row >= 0; row--){
-			float ratio = (system[row][col] / system[col][col]) * -1.0;
-			subtract_rows_with_ratio(system, ratio, row, col, n);
-		}
-	}
-	// Normalise - everything on the left should be 1.0
-	for(row = 0; row < n; row++){
-		if(system[row][row] != 1.0f){
-			float temp = system[row][row];
-			system[row][row] /= temp;
-			system[row][n] /= temp;
-		}
 	}
 }
 
@@ -102,20 +101,40 @@ static int parse_args(int argc, char *argv[]){
 	exit(1);
 }
 
-// TODO: allow values to be zero
-int main(int argc, char *argv[]){
-	int n = parse_args(argc, argv);
-	float **system = create_random_system(n);
-	//print_system(system, n);
+void solve_serial(float **system, const int n);
+void solve_openmp(float **system, const int n);
+
+static void time_serial(float **system, const int n){
 	struct timeval start_time;
 	struct timeval end_time;
 	long long time_taken;
 	gettimeofday(&start_time, NULL);
-	do_gaussian_elimination(system, n);
-	do_back_substituion(system, n);
+	solve_serial(system, n);
 	gettimeofday(&end_time, NULL);
 	time_taken = (end_time.tv_sec - start_time.tv_sec) * 1000000L + (end_time.tv_usec - start_time.tv_usec);
-	printf("Time taken: %lld microseconds.\n", time_taken);
-	print_system(system, n);
+	printf("Serial time taken: %lld microseconds.\n", time_taken);
+	//print_system(system, n);
+}
+
+static void time_openmp(float **system, const int n){
+	struct timeval start_time;
+	struct timeval end_time;
+	long long time_taken;
+	gettimeofday(&start_time, NULL);
+	solve_openmp(system, n);
+	gettimeofday(&end_time, NULL);
+	time_taken = (end_time.tv_sec - start_time.tv_sec) * 1000000L + (end_time.tv_usec - start_time.tv_usec);
+	printf("OpenMP time taken: %lld microseconds.\n", time_taken);
+	//print_system(system, n);
+}
+
+// TODO: allow values to be zero
+int main(int argc, char *argv[]){
+	int n = parse_args(argc, argv);
+	float **serial_system = create_random_system(n);
+	float **openmp_system = copy_system(serial_system, n);
+	time_serial(serial_system, n);
+	time_openmp(openmp_system, n);
+	check_systems_equal(serial_system, openmp_system, n);
 	return 0;
 }
