@@ -56,21 +56,6 @@ static float **create_random_system(const int n){
 		system[i] = &(temp[i*(n+1)]);
 	}
 	fill_with_values(system, n);
-	// Just an example for testing
-	/*
-	system[0][0] = 2.0;
-	system[0][1] = 1.0;
-	system[0][2] = -1.0;
-	system[0][3] = 8.0;
-	system[1][0] = -3.0;
-	system[1][1] = -1.0;
-	system[1][2] = 2.0;
-	system[1][3] = -11.0;
-	system[2][0] = -2.0;
-	system[2][1] = 1.0;
-	system[2][2] = 2.0;
-	system[2][3] = -3.0;
-	*/
 	return system;
 }
 

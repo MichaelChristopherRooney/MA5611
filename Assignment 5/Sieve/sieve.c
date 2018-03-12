@@ -6,6 +6,22 @@
 #include <math.h>
 #include <omp.h>
 
+/* Something like this ?
+
+i = 2
+pragma omp parallel
+{
+	do {
+		start = thread_id ...
+		end = thread_id ...
+		pragma barrier
+		if(thread_id == 0)
+			find next prime
+		pragma barrier
+	}(while i < n);
+}
+*/
+
 char *sieve_with_opt_and_openmp(const int n){
 	char *primes = calloc(n, sizeof(int));
 	memset(primes, 1, (n*sizeof(int)) + 1);

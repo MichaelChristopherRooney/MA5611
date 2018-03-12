@@ -29,6 +29,7 @@ static void do_back_substituion(float **system, const int n){
 		}
 	}
 	// Normalise - everything on the left should be 1.0
+	#pragma omp parallel for
 	for(row = 0; row < n; row++){
 		if(system[row][row] != 1.0f){
 			float temp = system[row][row];
@@ -38,10 +39,10 @@ static void do_back_substituion(float **system, const int n){
 	}
 }
 
-#define NUM_THREADS 2
+#define NUM_THREADS 4
 void solve_openmp(float **system, const int n){
 	omp_set_num_threads(NUM_THREADS);
-	printf("%d\n", omp_get_num_threads());
+	//printf("%d\n", omp_get_num_threads());
 	do_gaussian_elimination(system, n);
 	do_back_substituion(system, n);
 }
