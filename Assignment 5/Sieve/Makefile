@@ -1,6 +1,6 @@
 OBJECTS = sieve.o
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -lm -fopenmp
 EXEC_NAME = sieve
 
 all: sieve.o
