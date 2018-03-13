@@ -39,7 +39,7 @@ static void do_back_substituion(float **system, const int n){
 	}
 }
 
-#define NUM_THREADS 4
+#define NUM_THREADS 6
 void solve_openmp(float **system, const int n){
 	omp_set_num_threads(NUM_THREADS);
 	//printf("%d\n", omp_get_num_threads());

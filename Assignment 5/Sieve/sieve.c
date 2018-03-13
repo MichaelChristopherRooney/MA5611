@@ -6,29 +6,51 @@
 #include <math.h>
 #include <omp.h>
 
-/* Something like this ?
+#define NUM_OMP_THREADS 6
 
-i = 2
-pragma omp parallel
-{
-	do {
-		start = thread_id ...
-		end = thread_id ...
-		pragma barrier
-		if(thread_id == 0)
-			find next prime
-		pragma barrier
-	}(while i < n);
+char *sieve_openmp_advanced(const int n){
+	char *primes = calloc(n, sizeof(int));
+	memset(primes, 1, (n*sizeof(int)) + 1);
+	primes[0] = 0;
+	primes[1] = 0;
+	int i = 0;
+	int lim = sqrt(n);
+	#pragma omp parallel shared(i)
+	{
+		int start = n + 1;
+		int k;
+		do {
+			#pragma omp critical
+			{
+				for(i = i + 1; i < n; i++){
+					if(primes[i] == 1){
+						start = i;
+						break;
+					}
+				}
+				//printf("%d got %d\n", omp_get_thread_num(), start);
+			}
+			if(start <= n){
+				for(k = start * start; k <= n; k += start){
+					primes[k] = 0;
+				}
+			}
+		}while(i <= lim);
+	}
+	//for(i = 0; i < n; i++){
+	//	if(primes[i] == 1){
+	//		printf("%d is prime\n", i);
+	//	}
+	//}
+	return primes;
 }
-*/
 
-char *sieve_with_opt_and_openmp(const int n){
+char *sieve_openmp_simple(const int n){
 	char *primes = calloc(n, sizeof(int));
 	memset(primes, 1, (n*sizeof(int)) + 1);
 	int lim = sqrt(n);
 	int i;
-	omp_set_num_threads(4);
-	#pragma omp parallel for schedule(dynamic)
+	#pragma omp parallel for private(i) schedule(dynamic)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
 			for (int j = i * i; j <= n; j += i){
@@ -41,11 +63,13 @@ char *sieve_with_opt_and_openmp(const int n){
 	return primes;
 }
 
-char *sieve_with_lim_and_square_opt(const int n){
+char *sieve_serial(const int n){
 	char *primes = calloc(n, sizeof(int));
 	memset(primes, 1, (n*sizeof(int)) + 1);
 	int lim = sqrt(n);
 	int i;
+	omp_set_num_threads(6);
+	#pragma omp parallel for private(i)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
 			for (int j = i * i; j <= n; j += i){
@@ -58,44 +82,11 @@ char *sieve_with_lim_and_square_opt(const int n){
 	return primes;
 }
 
-char *sieve_with_lim_opt(const int n){
-	char *primes = calloc(n, sizeof(int));
-	memset(primes, 1, (n*sizeof(int)) + 1);
-	int lim = sqrt(n);
-	int i;
-	for (i = 2; i <= lim; i++){
-		if (primes[i]){
-			for (int j = i + i; j <= n; j += i){
-				primes[j] = 0;
-			}
-		}
-	}
-	primes[0] = 0;
-	primes[1] = 0;
-	return primes;
-}
+#define NUM_FUNCS 3
 
-char *sieve_naive(const int n){
-	char *primes = calloc(n, sizeof(int));
-	memset(primes, 1, (n*sizeof(int)) + 1);
-	int i;
-	for (i = 2; i <= n; i++){
-		if (primes[i]){
-			for (int j = i + i; j <= n; j += i){
-				primes[j] = 0;
-			}
-		}
-	}
-	primes[0] = 0;
-	primes[1] = 0;
-	return primes;
-}
-
-#define NUM_FUNCS 4
-
-char *names[NUM_FUNCS] = { "naive", "sqrt opt", "sqrt and sqr opt" };
+char *names[NUM_FUNCS] = { "Serial", "OpenMP simple", "OpenMP advanced" };
 char *(*sieves[NUM_FUNCS]) (const int n) = { 
-	&sieve_naive, &sieve_with_lim_opt, &sieve_with_lim_and_square_opt, &sieve_with_opt_and_openmp
+	&sieve_serial, &sieve_openmp_simple, &sieve_openmp_advanced
 };
 char *results[NUM_FUNCS];
 
@@ -112,6 +103,8 @@ static void check_results(const int n){
 	}
 }
 
+#define CHECK_RESULTS 1
+
 static void time_sieves(const int n){
 	int i;
 	for(i = 0; i < NUM_FUNCS; i++){
@@ -119,10 +112,15 @@ static void time_sieves(const int n){
 		struct timeval end_time;
 		long long time_taken;
 		gettimeofday(&start_time, NULL);
-		results[i] = sieves[i](n);
+		char *r = sieves[i](n);
+#if CHECK_RESULTS
+		results[i] = r;
+#else
+		free(r);
+#endif
 		gettimeofday(&end_time, NULL);
 		time_taken = (end_time.tv_sec - start_time.tv_sec) * 1000000L + (end_time.tv_usec - start_time.tv_usec);
-		printf("Time taken: %lld microseconds.\n", time_taken);
+		printf("%s took:\t%lld microseconds.\n", names[i], time_taken);
 	}
 
 }
@@ -145,7 +143,10 @@ static int parse_args(int argc, char *argv[]){
 
 int main(int argc, char *argv[]){
 	int n = parse_args(argc, argv);
+	omp_set_num_threads(NUM_OMP_THREADS);
 	time_sieves(n);
+#if CHECK_RESULTS
 	check_results(n);
+#endif
 	return 0;
 } 
