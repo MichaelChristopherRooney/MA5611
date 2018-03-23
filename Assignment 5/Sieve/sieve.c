@@ -6,51 +6,77 @@
 #include <math.h>
 #include <omp.h>
 
-#define NUM_OMP_THREADS 6
-
-char *sieve_openmp_advanced(const int n){
+char *sieve_openmp_synchronised(const int n){
 	char *primes = calloc(n, sizeof(int));
 	memset(primes, 1, (n*sizeof(int)) + 1);
 	primes[0] = 0;
 	primes[1] = 0;
-	int i = 0;
+	int i;
+	// first set all multiplies of two to be non-prime
+	#pragma omp parallel for
+	for(i = 4; i < n; i = i + 2){
+		primes[i] = 0;
+	}
+	i = 3;
 	int lim = sqrt(n);
+	int lowest_start = 0;
 	#pragma omp parallel shared(i)
 	{
-		int start = n + 1;
-		int k;
+		int num_threads = omp_get_num_threads();
+		int thread_id = omp_get_thread_num();
+		int start = i + (i * thread_id);
+		int tid;
 		do {
-			#pragma omp critical
-			{
-				for(i = i + 1; i < n; i++){
-					if(primes[i] == 1){
-						start = i;
-						break;
+			int k;
+			for(k = start + start; k <= n; k = k + start){
+				primes[k] = 0;
+			}
+			#pragma omp barrier
+			for(tid = 0; tid < num_threads; tid++){
+				if(tid == thread_id){
+					for(i = i + 1; i <= n; i++){
+						if(primes[i] == 1){
+							start = i;
+							//printf("Thread %d, start %d\n", thread_id, start);
+							break;
+						}
+					}
+					if(tid == 0){
+						lowest_start = start;
 					}
 				}
-				//printf("%d got %d\n", omp_get_thread_num(), start);
+			#pragma omp barrier
 			}
-			if(start <= n){
-				for(k = start * start; k <= n; k += start){
-					primes[k] = 0;
-				}
-			}
-		}while(i <= lim);
+		}while(lowest_start <= lim);
+		
 	}
-	//for(i = 0; i < n; i++){
-	//	if(primes[i] == 1){
-	//		printf("%d is prime\n", i);
-	//	}
-	//}
 	return primes;
 }
 
-char *sieve_openmp_simple(const int n){
+char *sieve_openmp_dynamic(const int n){
 	char *primes = calloc(n, sizeof(int));
 	memset(primes, 1, (n*sizeof(int)) + 1);
 	int lim = sqrt(n);
 	int i;
 	#pragma omp parallel for private(i) schedule(dynamic)
+	for (i = 2; i <= lim; i++){
+		if (primes[i]){
+			for (int j = i * i; j <= n; j += i){
+				primes[j] = 0;
+			}
+		}
+	}
+	primes[0] = 0;
+	primes[1] = 0;
+	return primes;
+}
+
+char *sieve_openmp_static(const int n){
+	char *primes = calloc(n, sizeof(int));
+	memset(primes, 1, (n*sizeof(int)) + 1);
+	int lim = sqrt(n);
+	int i;
+	#pragma omp parallel for private(i) schedule(static)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
 			for (int j = i * i; j <= n; j += i){
@@ -82,11 +108,11 @@ char *sieve_serial(const int n){
 	return primes;
 }
 
-#define NUM_FUNCS 3
+#define NUM_FUNCS 4
 
-char *names[NUM_FUNCS] = { "Serial", "OpenMP simple", "OpenMP advanced" };
+char *names[NUM_FUNCS] = { "Serial", "OpenMP static", "OpenMP dynamic", "OpenMP synchronised" };
 char *(*sieves[NUM_FUNCS]) (const int n) = { 
-	&sieve_serial, &sieve_openmp_simple, &sieve_openmp_advanced
+	&sieve_serial, &sieve_openmp_static, &sieve_openmp_dynamic, &sieve_openmp_synchronised
 };
 char *results[NUM_FUNCS];
 
@@ -143,7 +169,6 @@ static int parse_args(int argc, char *argv[]){
 
 int main(int argc, char *argv[]){
 	int n = parse_args(argc, argv);
-	omp_set_num_threads(NUM_OMP_THREADS);
 	time_sieves(n);
 #if CHECK_RESULTS
 	check_results(n);

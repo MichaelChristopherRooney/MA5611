@@ -60,7 +60,6 @@ static float **create_random_system(const int n){
 }
 
 static void print_system(float **system, const int n){
-	//return;
 	int i, j;
 	for(i = 0; i < n; i++){
 		for(j = 0; j < n + 1; j++){
@@ -98,7 +97,6 @@ static void time_serial(float **system, const int n){
 	gettimeofday(&end_time, NULL);
 	time_taken = (end_time.tv_sec - start_time.tv_sec) * 1000000L + (end_time.tv_usec - start_time.tv_usec);
 	printf("Serial time taken: %lld microseconds.\n", time_taken);
-	//print_system(system, n);
 }
 
 static void time_openmp(float **system, const int n){
@@ -110,10 +108,8 @@ static void time_openmp(float **system, const int n){
 	gettimeofday(&end_time, NULL);
 	time_taken = (end_time.tv_sec - start_time.tv_sec) * 1000000L + (end_time.tv_usec - start_time.tv_usec);
 	printf("OpenMP time taken: %lld microseconds.\n", time_taken);
-	//print_system(system, n);
 }
 
-// TODO: allow values to be zero
 int main(int argc, char *argv[]){
 	int n = parse_args(argc, argv);
 	float **serial_system = create_random_system(n);

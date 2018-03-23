@@ -3,7 +3,8 @@
 
 // row1 = (row2*ratio) + row1
 static void subtract_rows_with_ratio(float **system, float ratio, int row1, int row2, int n){
-	for(int col = 0; col < n + 1; col++){ // note n + 1
+	int col;
+	for(col = 0; col < n + 1; col++){ // note n + 1
 		system[row1][col] = (system[row2][col] * ratio) + system[row1][col];
 	}
 }
@@ -39,10 +40,7 @@ static void do_back_substituion(float **system, const int n){
 	}
 }
 
-#define NUM_THREADS 6
 void solve_openmp(float **system, const int n){
-	omp_set_num_threads(NUM_THREADS);
-	//printf("%d\n", omp_get_num_threads());
 	do_gaussian_elimination(system, n);
 	do_back_substituion(system, n);
 }
