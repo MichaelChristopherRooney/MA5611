@@ -61,7 +61,8 @@ char *sieve_openmp_dynamic(const int n){
 	#pragma omp parallel for private(i) schedule(dynamic)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
-			for (int j = i * i; j <= n; j += i){
+			int j;
+			for (j = i * i; j <= n; j += i){
 				primes[j] = 0;
 			}
 		}
@@ -79,7 +80,8 @@ char *sieve_openmp_static(const int n){
 	#pragma omp parallel for private(i) schedule(static)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
-			for (int j = i * i; j <= n; j += i){
+			int j;
+			for (j = i * i; j <= n; j += i){
 				primes[j] = 0;
 			}
 		}
@@ -98,7 +100,8 @@ char *sieve_serial(const int n){
 	#pragma omp parallel for private(i)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
-			for (int j = i * i; j <= n; j += i){
+			int j;
+			for (j = i * i; j <= n; j += i){
 				primes[j] = 0;
 			}
 		}
