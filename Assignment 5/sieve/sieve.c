@@ -96,8 +96,6 @@ char *sieve_serial(const int n){
 	memset(primes, 1, (n*sizeof(int)) + 1);
 	int lim = sqrt(n);
 	int i;
-	omp_set_num_threads(6);
-	#pragma omp parallel for private(i)
 	for (i = 2; i <= lim; i++){
 		if (primes[i]){
 			int j;
