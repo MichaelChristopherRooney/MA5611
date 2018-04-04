@@ -1,4 +1,5 @@
 int NUM_CITIES;
+char *INPUT_FILE;
 
 struct city {
 	int id;
@@ -9,5 +10,7 @@ struct city {
 
 struct city *CITIES;
 
-void generate_cities();
+void init_cities();
 int *solve_tsp(float *dist);
+
+

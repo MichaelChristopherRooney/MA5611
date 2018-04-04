@@ -6,12 +6,62 @@
 
 #include "common.h"
 
+static int *visited;
+static int *shortest_route;
+static float shortest_distance = 0.0;
+
+// See report for details of file format
+static void write_to_file(){
+	FILE *fp = fopen("config.bin", "wb");
+	if(fp == NULL){
+		printf("ERROR: cannot open file to write to.\n");
+		exit(1);
+	}
+	fwrite(&NUM_CITIES, sizeof(int), 1, fp);
+	int i;
+	for(i = 0; i < NUM_CITIES; i++){
+		fwrite(&CITIES[i].id, sizeof(int), 1, fp);
+		fwrite(&CITIES[i].x, sizeof(float), 1, fp);
+		fwrite(&CITIES[i].y, sizeof(float), 1, fp);
+		int j;
+		for(j = 0; j < NUM_CITIES; j++){
+			fwrite(&CITIES[i].distances[j], sizeof(float), 1, fp);
+		}
+	}
+}
+
 static float get_distance_between_cities(struct city *c1, struct city *c2){
 	float temp = pow(c1->x - c2->x, 2) + pow(c1->y - c2->y, 2);
 	return sqrt(temp);
 }
 
-void generate_cities(){
+static void load_from_file(){
+	FILE *fp = fopen(INPUT_FILE, "rb");
+	if(fp == NULL){
+		printf("ERROR: cannot open file to read from.\n");
+		exit(1);
+	}
+	fread(&NUM_CITIES, sizeof(int), 1, fp);
+	CITIES = calloc(NUM_CITIES, sizeof(struct city));
+	int i;
+	for(i = 0; i < NUM_CITIES; i++){
+		fread(&CITIES[i].id, sizeof(int), 1, fp);
+		fread(&CITIES[i].x, sizeof(float), 1, fp);
+		fread(&CITIES[i].y, sizeof(float), 1, fp);
+		CITIES[i].distances = calloc(NUM_CITIES, sizeof(float));
+		int j;
+		for(j = 0; j < NUM_CITIES; j++){
+			fread(&CITIES[i].distances[j], sizeof(float), 1, fp);
+		}
+		printf("City with id %d is located at %f, %f\n", i+1, CITIES[i].x, CITIES[i].y);
+	}
+}
+
+void init_cities(){
+	if(INPUT_FILE != NULL){
+		load_from_file();
+		return;
+	}
 	srand48(time(NULL));
 	CITIES = calloc(NUM_CITIES, sizeof(struct city));
 	int i, j;
@@ -30,11 +80,8 @@ void generate_cities(){
 			CITIES[j].distances[i] = distance;
 		}
 	}
+	write_to_file();
 }
-
-static int *visited;
-static int *shortest_route;
-static float shortest_distance = 0.0;
 
 static int already_visited(struct city *cur, int depth){
 	int i;
@@ -76,6 +123,7 @@ static void solve_recursive(struct city *cur, int depth, float distance){
 // Old values in that array will cause issues.
 // Uses the first city as a starting point.
 int *solve_tsp(float *dist){
+	
 	visited = calloc(NUM_CITIES, sizeof(int));
 	shortest_route = calloc(NUM_CITIES, sizeof(int));
 	int i;

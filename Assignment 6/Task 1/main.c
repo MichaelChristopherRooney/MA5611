@@ -5,16 +5,25 @@
 
 #include "common.h"
 
+// Default null/0 values are set first
 static void parse_args(int argc, char *argv[]){
-	NUM_CITIES = 0; // to check if it is set below
+	NUM_CITIES = 0;
+	INPUT_FILE = NULL;
 	int c;
-	while((c = getopt(argc, argv, "n")) != -1){
+	while((c = getopt(argc, argv, "fn")) != -1){
 		switch(c){
+		case 'f':
+			INPUT_FILE = argv[optind];
+			break;
 		case 'n':
 			NUM_CITIES = atoi(argv[optind]);
+			break;
 		}
 	}
-	if(NUM_CITIES <= 0){
+	if(NUM_CITIES != 0 && INPUT_FILE != NULL){
+		printf("ERROR: cannot specify both input file and number of cities\n");
+		exit(1);
+	} else if(INPUT_FILE == NULL && NUM_CITIES <= 0){
 		printf("ERROR: please provide a positive non-zero value for n\n");
 		exit(1);
 	}
@@ -33,7 +42,7 @@ static void print_results(float dist, int *path, long long time_taken){
 
 int main(int argc, char *argv[]){
 	parse_args(argc, argv);
-	generate_cities();
+	init_cities();
 	struct timeval start, end;
 	gettimeofday(&start, NULL);
 	float dist;
