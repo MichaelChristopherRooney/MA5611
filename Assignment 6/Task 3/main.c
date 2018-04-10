@@ -39,12 +39,14 @@ int main(int argc, char *argv[]){
 	init_cities();
 	struct timeval start, end;
 	gettimeofday(&start, NULL);
-	float dist;
-	int *path = solve_tsp(&dist);
+	float dist_greedy;
+	int *path_greedy = solve_tsp_greedy(&dist_greedy);
 	gettimeofday(&end, NULL);
-	long long time_taken = (end.tv_sec - start.tv_sec) * 1000000L + (end.tv_usec - start.tv_usec);
-	print_results(dist, path, time_taken);
+	long long time_taken_greedy = (end.tv_sec - start.tv_sec) * 1000000L + (end.tv_usec - start.tv_usec);
+	printf("=== RESULTS FOR GREEDY NEAREST NEIGHBOUR ALGORITHM ===\n");	
+	print_results(dist_greedy, path_greedy, time_taken_greedy);
+	printf("===================\n");
 	free(CITIES);
-	free(path);
+	free(path_greedy);
 	return 0;
 }

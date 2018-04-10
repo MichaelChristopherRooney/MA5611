@@ -11,6 +11,6 @@ struct city {
 struct city *CITIES;
 
 void init_cities();
-int *solve_tsp(float *dist);
+int *solve_tsp_greedy(float *dist);
 
 
