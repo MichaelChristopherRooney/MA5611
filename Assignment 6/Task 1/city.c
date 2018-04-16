@@ -42,6 +42,10 @@ static void load_from_file(){
 		exit(1);
 	}
 	fread(&NUM_CITIES, sizeof(int), 1, fp);
+	if(FIXED_START_CITY > NUM_CITIES + 1){
+		printf("ERROR: fixed starting city does not exist\n");
+		exit(1);
+	}
 	CITIES = calloc(NUM_CITIES, sizeof(struct city));
 	int i;
 	for(i = 0; i < NUM_CITIES; i++){
@@ -123,12 +127,15 @@ static void solve_recursive(struct city *cur, int depth, float distance){
 // Old values in that array will cause issues.
 // Uses the first city as a starting point.
 int *solve_tsp(float *dist){
-	
 	visited = calloc(NUM_CITIES, sizeof(int));
 	shortest_route = calloc(NUM_CITIES, sizeof(int));
-	int i;
-	for(i = 0; i < NUM_CITIES; i++){
-		solve_recursive(&CITIES[i], 1, 0.0f);
+	if(FIXED_START_CITY != -1){
+		solve_recursive(&CITIES[FIXED_START_CITY - 1], 1, 0.0f);
+	} else {
+		int i;
+		for(i = 0; i < NUM_CITIES; i++){
+			solve_recursive(&CITIES[i], 1, 0.0f);
+		}
 	}
 	free(visited);
 	*dist = shortest_distance;

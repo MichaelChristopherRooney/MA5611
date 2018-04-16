@@ -10,15 +10,22 @@ static void parse_args(int argc, char *argv[]){
 	NUM_CITIES = 0;
 	INPUT_FILE = NULL;
 	int c;
-	while((c = getopt(argc, argv, "f")) != -1){
+	while((c = getopt(argc, argv, "fs")) != -1){
 		switch(c){
 		case 'f':
 			INPUT_FILE = argv[optind];
+			break;
+		case 's':
+			FIXED_START_CITY = atoi(argv[optind]);
 			break;
 		}
 	}
 	if(INPUT_FILE == NULL){
 		printf("ERROR: please provide an input filename\n");
+		exit(1);
+	}
+	if(FIXED_START_CITY != -1 && FIXED_START_CITY <= 0){
+		printf("ERROR: please provide a positive non-zero value for s\n");
 		exit(1);
 	}
 }

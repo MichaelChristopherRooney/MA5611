@@ -56,9 +56,13 @@ static void solve_recursive_greedy(struct city *cur, int depth, float distance){
 int *solve_tsp_greedy(float *dist){
 	visited_greedy = calloc(NUM_CITIES, sizeof(int));
 	shortest_route_greedy = calloc(NUM_CITIES, sizeof(int));
-	int i;
-	for(i = 0; i < NUM_CITIES; i++){
-		solve_recursive_greedy(&CITIES[i], 1, 0.0f);
+	if(FIXED_START_CITY != -1){
+		solve_recursive_greedy(&CITIES[FIXED_START_CITY - 1], 1, 0.0f);
+	} else {
+		int i;
+		for(i = 0; i < NUM_CITIES; i++){
+			solve_recursive_greedy(&CITIES[i], 1, 0.0f);
+		}
 	}
 	free(visited_greedy);
 	*dist = shortest_distance_greedy;

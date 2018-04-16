@@ -1,4 +1,5 @@
 int NUM_CITIES;
+int FIXED_START_CITY; // set to -1 if no fixed starting city
 char *INPUT_FILE;
 
 struct city {

@@ -5,18 +5,21 @@
 
 #include "common.h"
 
-// Default null/0 values are set first
 static void parse_args(int argc, char *argv[]){
+	FIXED_START_CITY = -1;
 	NUM_CITIES = 0;
 	INPUT_FILE = NULL;
 	int c;
-	while((c = getopt(argc, argv, "fn")) != -1){
+	while((c = getopt(argc, argv, "fns")) != -1){
 		switch(c){
 		case 'f':
 			INPUT_FILE = argv[optind];
 			break;
 		case 'n':
 			NUM_CITIES = atoi(argv[optind]);
+			break;
+		case 's':
+			FIXED_START_CITY = atoi(argv[optind]);
 			break;
 		}
 	}
@@ -26,6 +29,16 @@ static void parse_args(int argc, char *argv[]){
 	} else if(INPUT_FILE == NULL && NUM_CITIES <= 0){
 		printf("ERROR: please provide a positive non-zero value for n\n");
 		exit(1);
+	}
+	if(FIXED_START_CITY != -1){
+		if(FIXED_START_CITY <= 0){
+			printf("ERROR: please provide a positive non-zero value for s\n");
+			exit(1);
+		}
+		if(NUM_CITIES != 0 && FIXED_START_CITY > NUM_CITIES + 1){
+			printf("ERROR: fixed starting city does not exist\n");
+			exit(1);
+		}
 	}
 }
 

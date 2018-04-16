@@ -58,6 +58,10 @@ static void parse_file_headers(FILE *fp){
 	char *dim_str = strtok(line, ": ");
 	dim_str = strtok(NULL, ": ");
 	NUM_CITIES = atoi(dim_str);
+	if(FIXED_START_CITY > NUM_CITIES + 1){
+		printf("ERROR: fixed starting city does not exist\n");
+		exit(1);
+	}
 	printf("CITIES: %d\n", NUM_CITIES);
 	CITIES = calloc(NUM_CITIES, sizeof(struct city));
 	// Now skip over the remaining headers until we find the node coord section
