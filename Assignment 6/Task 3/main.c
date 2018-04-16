@@ -7,6 +7,7 @@
 
 // Default null/0 values are set first
 static void parse_args(int argc, char *argv[]){
+	FIXED_START_CITY = -1;
 	NUM_CITIES = 0;
 	INPUT_FILE = NULL;
 	int c;

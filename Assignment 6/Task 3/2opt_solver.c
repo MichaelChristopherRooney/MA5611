@@ -34,8 +34,8 @@ static float calculate_route_distance(int *route){
 	return dist;
 }
 
-// Existing is a route that should comes from a greedy nearest neighbour solution.
-// Dist will contain the distanced of the new calulcated route.
+// Existing is a route that should come from a greedy nearest neighbour solution.
+// Dist will contain the distance of the new calulcated route.
 // Returns the route as an int array.
 int *solve_tsp_2opt(int *existing, float existing_dist, float *dist){
 	int *new_route = calloc(NUM_CITIES, sizeof(int));
